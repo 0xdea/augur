@@ -2,9 +2,9 @@
 //! augur - TODO
 //! Copyright (c) 2024 Marco Ivaldi <raptor@0xdeadbeef.info>
 //!
-//! > "It's important to be quotable."  
-//! >  
-//! > -- Halvar Flake  
+//! > "In fact I've actually triggered buffer overflows by just entering my real name."
+//! >
+//! > -- A.
 //!
 //! TODO
 //!

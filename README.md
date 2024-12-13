@@ -10,9 +10,9 @@
 [![build](https://github.com/0xdea/augur/actions/workflows/build.yml/badge.svg)](https://github.com/0xdea/augur/actions/workflows/build.yml)
 [![doc](https://github.com/0xdea/augur/actions/workflows/doc.yml/badge.svg)](https://github.com/0xdea/augur/actions/workflows/doc.yml)
 
-> "It's important to be quotable."
+> "In fact I've actually triggered buffer overflows by just entering my real name."
 >
-> -- Halvar Flake
+> -- A.
 
 TODO
 
