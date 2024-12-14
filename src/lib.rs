@@ -57,37 +57,55 @@
 
 #![doc(html_logo_url = "https://raw.githubusercontent.com/0xdea/augur/master/.img/logo.png")]
 
-// Standard library imports
-use std::error::Error;
+use std::fs;
+use std::path::Path;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
-// External crate imports
-// use ...;
+use idalib::idb::IDB;
 
-// Internal imports
-// use ...;
+/// TODO
+static COUNTER: AtomicUsize = AtomicUsize::new(0);
 
-// const NAME: type = ...;
+/// TODO
+pub fn run(filepath: &Path) -> anyhow::Result<usize> {
+    // Open target binary and run auto-analysis
+    println!("[*] Trying to analyze binary file {filepath:?}");
+    if !filepath.is_file() {
+        return Err(anyhow::anyhow!("invalid file path"));
+    }
+    let idb = IDB::open(filepath)?;
+    println!("[+] Successfully analyzed binary file");
+    println!();
 
-// static NAME: type = ...;
+    // Print binary file information
+    println!("[-] Processor: {}", idb.processor().long_name(),);
+    println!("[-] Compiler: {:?}", idb.meta().cc_id());
+    println!("[-] File type: {:?}", idb.meta().filetype());
+    println!();
 
-/// Dispatch to function implementing the selected action
-pub fn run(action: &str) -> Result<(), Box<dyn Error>> {
-    match action {
-        "action1" => func1()?,
-        _ => func2(action)?,
+    // Check if Hex-Rays decompiler is available
+    if !idb.decompiler_available() {
+        return Err(anyhow::anyhow!("decompiler is not available"));
     }
 
-    Ok(())
-}
-
-// Other functions ...
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
+    // Create a new output directory, returning an error if it already exists and it's not empty
+    let dirpath = filepath.with_extension("dec");
+    println!("[*] Preparing output directory {dirpath:?}");
+    if dirpath.exists() {
+        fs::remove_dir(&dirpath).map_err(|_| anyhow::anyhow!("output directory already exists"))?;
     }
+    fs::create_dir_all(&dirpath)?;
+    println!("[+] Output directory is ready");
+
+    // TODO: find strings, XREFs, mark? (in case use open_with above), use `haruspex::decompile_to_file`
+
+    // Remove output directory and return an error in case no functions were decompiled
+    if COUNTER.load(Ordering::Relaxed) == 0 {
+        fs::remove_dir(&dirpath)?;
+        return Err(anyhow::anyhow!(
+            "no functions were decompiled, check your input file"
+        ));
+    }
+
+    Ok(COUNTER.load(Ordering::Relaxed))
 }
