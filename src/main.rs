@@ -1,17 +1,6 @@
-// Standard library imports
 use std::env;
 use std::path::Path;
 use std::process;
-
-// External crate imports
-// use ...;
-
-// Internal imports
-// use ...;
-
-// const NAME: type = ...;
-
-// static NAME: type = ...;
 
 const PROG: &str = env!("CARGO_PKG_NAME");
 
@@ -32,18 +21,17 @@ fn main() {
         .to_str()
         .unwrap_or(PROG);
 
-    let action = match args.len() {
-        1 => "default",
-        2 => &args[1].clone(),
+    let filename = match args.len() {
+        2 => &args[1],
         _ => "-",
     };
-    if action.starts_with('-') {
+    if filename.starts_with('-') {
         usage(prog);
     }
 
     // Let's do it
-    match augur::run(action) {
-        Ok(()) => (),
+    match augur::run(Path::new(filename)) {
+        Ok(_) => (),
         Err(err) => {
             eprintln!("[!] Error: {err}");
             process::exit(1);
@@ -54,10 +42,7 @@ fn main() {
 /// Print usage information and exit
 fn usage(prog: &str) {
     println!("Usage:");
-    println!(".\\{prog} TODO");
-    println!("\nExamples:");
-    println!(".\\{prog}");
-    println!(".\\{prog} TODO");
+    println!("$ ./{prog} <binary_file>");
 
     process::exit(1);
 }
