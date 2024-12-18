@@ -108,7 +108,10 @@ pub fn run(filepath: &Path) -> anyhow::Result<usize> {
 
         // TODO
         println!("\n{addr:#x} {s:?} ");
-        get_xrefs(&idb, addr)?; // TODO handle error gracefully, don't stop
+        match get_xrefs(&idb, addr, &s, &dirpath) {
+            Ok(()) => { /* TODO print stuff here? */ }
+            Err(_) => continue, // TODO differentiate other possible errors, e.g. decompile errors
+        }
 
         // TODO check decompiler license
 
@@ -132,20 +135,39 @@ pub fn run(filepath: &Path) -> anyhow::Result<usize> {
     Ok(COUNTER.load(Ordering::Relaxed))
 }
 
-fn get_xrefs(idb: &IDB, addr: Address) -> anyhow::Result<()> {
+// TODO also rename, better manage all of these params, maybe in a struct
+fn get_xrefs(idb: &IDB, addr: Address, string: &str, dirpath: &Path) -> anyhow::Result<()> {
     let mut cur = idb
         .first_xref_to(addr, XRefQuery::ALL)
         .ok_or_else(|| anyhow::anyhow!("no xrefs to address {addr:#x}"))?;
 
     loop {
+        // TODO
+        match idb.function_at(cur.from()) {
+            Some(f) => {
+                let func_name = f.name().unwrap().replace(['.', '/'], "_");
+                let string_name = filter_printable_chars(string).replace(['.', '/', ' '], "_");
+                let output_dir = format!("{addr:x}_{string_name}");
+                let output_file = format!("{func_name}@{:x}", f.start_address());
+                let output_path = dirpath
+                    .join(output_dir)
+                    .join(output_file)
+                    .with_extension("c");
+
+                println!("{:#x} in {func_name} -> {output_path:?}", cur.from());
+                // TODO: only decompile functions, do it directly or with iterator, or collection?
+            }
+            None => println!("{:#x} in <unknown>", cur.from()),
+        }
+
+        /*
         // Print address with caller function name if available
         let caller = idb
             .function_at(cur.from())
             .map_or("<unknown>".to_string(), |func| func.name().unwrap());
         println!("{:#x} in {}", cur.from(), caller);
         //println!("{:#x}", cur.from());
-
-        // TODO: only decompile functions, do it directly or with iterator, or collection?
+         */
 
         match cur.next_to() {
             Some(next) => cur = next,
@@ -154,4 +176,11 @@ fn get_xrefs(idb: &IDB, addr: Address) -> anyhow::Result<()> {
     }
 
     Ok(())
+}
+
+// TODO make this a closure? or a method for a MyString type, perhaps aliased instead of a newtype
+fn filter_printable_chars(s: &str) -> String {
+    s.chars()
+        .filter(|c| c.is_ascii_graphic() || *c == ' ')
+        .collect()
 }
