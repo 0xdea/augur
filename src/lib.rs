@@ -57,9 +57,9 @@
 
 #![doc(html_logo_url = "https://raw.githubusercontent.com/0xdea/augur/master/.img/logo.png")]
 
-use std::fs;
 use std::path::Path;
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::{fs, process};
 
 use haruspex::{decompile_to_file, HaruspexError};
 use idalib::decompiler::HexRaysErrorCode;
@@ -142,55 +142,57 @@ pub fn run(filepath: &Path) -> anyhow::Result<usize> {
 fn get_xrefs(idb: &IDB, addr: Address, string: &str, dirpath: &Path) -> anyhow::Result<()> {
     let mut cur = idb
         .first_xref_to(addr, XRefQuery::ALL)
-        .ok_or_else(|| anyhow::anyhow!("no xrefs to address {addr:#x}"))?;
+        .ok_or_else(|| anyhow::anyhow!("no xrefs to address {addr:#x}"))?; // TODO map_or badaddr like in rhandomancer?
 
     loop {
-        // TODO, add comment, don't use a match here to make it cleaner
-        match idb.function_at(cur.from()) {
-            Some(f) => {
-                let func_name = f.name().unwrap().replace(['.', '/'], "_");
-                let string_name = filter_printable_chars(string).replace(['.', '/', ' '], "_");
-                let output_dir = format!("{addr:x}_{string_name}");
-                let output_file = format!("{func_name}@{:x}", f.start_address());
-                let dirpath = dirpath.join(&output_dir);
-                let output_path = dirpath.join(output_file).with_extension("c");
+        // TODO, refactor to make recursive calls like in rhabdomancer? add comment
+        if let Some(f) = idb.function_at(cur.from()) {
+            // Generate output directory name
+            let string_printable = filter_printable_chars(string).replace(['.', '/', ' '], "_");
+            let output_dir = format!("{addr:x}_{string_printable}");
 
-                // Create output directory if needed
-                if !dirpath.exists() {
-                    fs::create_dir(&dirpath)?;
-                }
+            // Generate output file name
+            let func_name = f.name().unwrap().replace(['.', '/'], "_");
+            let output_file = format!("{func_name}@{:x}", f.start_address());
 
-                match decompile_to_file(&idb, &f, &output_path) {
-                    // Print output path in case of successful function decompilation
-                    Ok(()) => println!("{:#x} in {func_name} -> {output_path:?}", cur.from()),
+            // Generate output path
+            let dirpath_new = dirpath.join(&output_dir);
+            let output_path = dirpath_new.join(output_file).with_extension("c");
 
-                    // Return an error if Hex-Rays decompiler license is not available
-                    Err(HaruspexError::Decompile(IDAError::HexRays(e)))
-                        if e.code() == HexRaysErrorCode::License =>
-                    {
-                        return Err(e.into())
-                    }
-
-                    // Ignore other IDA errors
-                    Err(HaruspexError::Decompile(_)) => continue,
-
-                    // Return any other error
-                    Err(e) => return Err(e.into()),
-                }
-
-                COUNTER.fetch_add(1, Ordering::Relaxed);
+            // Create output directory if needed
+            if !dirpath_new.exists() {
+                fs::create_dir(&dirpath_new)?;
             }
-            None => println!("{:#x} in <unknown>", cur.from()),
-        }
 
-        /*
-        // Print address with caller function name if available
-        let caller = idb
-            .function_at(cur.from())
-            .map_or("<unknown>".to_string(), |func| func.name().unwrap());
-        println!("{:#x} in {}", cur.from(), caller);
-        //println!("{:#x}", cur.from());
-         */
+            // Decompile function and write pseudo-code to output file
+            match decompile_to_file(idb, &f, &output_path) {
+                // Print XREF address, function name, and output path in case of successful decompilation
+                Ok(()) => println!("{:#x} in {func_name} -> {output_path:?}", cur.from()),
+
+                // Cleanup and bail if Hex-Rays decompiler license is not available
+                Err(HaruspexError::Decompile(IDAError::HexRays(e)))
+                    if e.code() == HexRaysErrorCode::License =>
+                {
+                    let _ = fs::remove_dir(dirpath_new);
+                    let _ = fs::remove_dir(dirpath);
+                    eprintln!("[!] Error: {e}");
+                    process::exit(1); // TODO the idb remains open, I don't like this! try handling in run/main instead and see if this is prevented
+                }
+
+                // Ignore other IDA errors
+                Err(HaruspexError::Decompile(_)) => continue,
+
+                // Bail in case of any other error
+                Err(e) => {
+                    eprintln!("[!] Error: {e}");
+                    process::exit(1);
+                }
+            }
+
+            COUNTER.fetch_add(1, Ordering::Relaxed);
+        } else {
+            println!("{:#x} in <unknown>", cur.from());
+        }
 
         match cur.next_to() {
             Some(next) => cur = next,
