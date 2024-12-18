@@ -61,9 +61,11 @@ use std::fs;
 use std::path::Path;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
+use haruspex::{decompile_to_file, HaruspexError};
+use idalib::decompiler::HexRaysErrorCode;
 use idalib::idb::IDB;
 use idalib::xref::XRefQuery;
-use idalib::Address;
+use idalib::{Address, IDAError};
 
 /// TODO
 static COUNTER: AtomicUsize = AtomicUsize::new(0);
@@ -110,7 +112,7 @@ pub fn run(filepath: &Path) -> anyhow::Result<usize> {
         println!("\n{addr:#x} {s:?} ");
         match get_xrefs(&idb, addr, &s, &dirpath) {
             Ok(()) => { /* TODO print stuff here? */ }
-            Err(_) => continue, // TODO differentiate other possible errors, e.g. decompile errors
+            Err(_) => continue, // TODO differentiate other possible errors, e.g. decompile errors vs. no xrefs -> create our own error type like we did in Haruspex? + test this at the end, e.g. don't create intermediate dirs
         }
 
         // TODO check decompiler license
@@ -123,6 +125,7 @@ pub fn run(filepath: &Path) -> anyhow::Result<usize> {
     }
 
     // TODO: find strings, XREFs, mark? (in case use open_with above), use `haruspex::decompile_to_file`
+    // TODO: print final output with counter
 
     // Remove output directory and return an error in case no functions were decompiled
     if COUNTER.load(Ordering::Relaxed) == 0 {
@@ -142,20 +145,40 @@ fn get_xrefs(idb: &IDB, addr: Address, string: &str, dirpath: &Path) -> anyhow::
         .ok_or_else(|| anyhow::anyhow!("no xrefs to address {addr:#x}"))?;
 
     loop {
-        // TODO
+        // TODO, add comment, don't use a match here to make it cleaner
         match idb.function_at(cur.from()) {
             Some(f) => {
                 let func_name = f.name().unwrap().replace(['.', '/'], "_");
                 let string_name = filter_printable_chars(string).replace(['.', '/', ' '], "_");
                 let output_dir = format!("{addr:x}_{string_name}");
                 let output_file = format!("{func_name}@{:x}", f.start_address());
-                let output_path = dirpath
-                    .join(output_dir)
-                    .join(output_file)
-                    .with_extension("c");
+                let dirpath = dirpath.join(&output_dir);
+                let output_path = dirpath.join(output_file).with_extension("c");
 
-                println!("{:#x} in {func_name} -> {output_path:?}", cur.from());
-                // TODO: only decompile functions, do it directly or with iterator, or collection?
+                // Create output directory if needed
+                if !dirpath.exists() {
+                    fs::create_dir(&dirpath)?;
+                }
+
+                match decompile_to_file(&idb, &f, &output_path) {
+                    // Print output path in case of successful function decompilation
+                    Ok(()) => println!("{:#x} in {func_name} -> {output_path:?}", cur.from()),
+
+                    // Return an error if Hex-Rays decompiler license is not available
+                    Err(HaruspexError::Decompile(IDAError::HexRays(e)))
+                        if e.code() == HexRaysErrorCode::License =>
+                    {
+                        return Err(e.into())
+                    }
+
+                    // Ignore other IDA errors
+                    Err(HaruspexError::Decompile(_)) => continue,
+
+                    // Return any other error
+                    Err(e) => return Err(e.into()),
+                }
+
+                COUNTER.fetch_add(1, Ordering::Relaxed);
             }
             None => println!("{:#x} in <unknown>", cur.from()),
         }

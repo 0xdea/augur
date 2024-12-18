@@ -14,6 +14,7 @@ exclude = [".cargo/*", ".github/*", ".img/*", "tests/*"]
 
 [dependencies]
 idalib = "0.3"
+haruspex = "0.1"
 anyhow = "1.0"
 
 [build-dependencies]
