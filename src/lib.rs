@@ -1,6 +1,6 @@
 //!
 //! augur - TODO
-//! Copyright (c) 2024 Marco Ivaldi <raptor@0xdeadbeef.info>
+//! Copyright (c) 2024-2025 Marco Ivaldi <raptor@0xdeadbeef.info>
 //!
 //! > "In fact I've actually triggered buffer overflows by just entering my real name."
 //! >
