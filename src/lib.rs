@@ -1,21 +1,27 @@
 //!
-//! augur - TODO
+//! augur - Tool to extract strings and related pseudo-code
 //! Copyright (c) 2024-2025 Marco Ivaldi <raptor@0xdeadbeef.info>
 //!
 //! > "In fact I've actually triggered buffer overflows by just entering my real name."
 //! >
 //! > -- A.
 //!
-//! TODO
+//! Augur is a blazing fast IDA Pro headless plugin that extracts strings and related pseudo-code
+//! from a binary file.
 //!
 //! ## Features
-//! * TODO
+//! * Blazing fast, headless user experience courtesy of IDA Pro 9 and Binarly's idalib Rust bindings.
+//! * Support for binary targets for any architecture implemented by IDA Pro's Hex-Rays decompiler.
+//! * Pseudo-code of each function that references a specific string is stored in a separate directory.
 //!
 //! ## Blog post
-//! * TODO
+//! * <https://security.humanativaspa.it/doing-vulnerability-research-with-ida-pro-and-rust> (*coming soon*)
 //!
 //! ## See also
-//! * TODO
+//! * <https://github.com/0xdea/rhabdomancer>
+//! * <https://github.com/0xdea/haruspex>
+//! * <https://docs.hex-rays.com/release-notes/9_0#headless-processing-with-idalib>
+//! * <https://github.com/binarly-io/idalib>
 //!
 //! ## Installing
 //! The easiest way to get the latest release is via [crates.io](https://crates.io/crates/augur):
