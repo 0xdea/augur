@@ -71,9 +71,12 @@ TODO:
 TODO
 ```
 
-## Tested on/with
+## Tested with
 
-* TODO
+* IDA Pro 9.0.241217 on macOS arm64 and Linux x64.
+
+*Note: not tested on Windows, check [idalib](https://github.com/binarly-io/idalib) documentation if you want to port it
+yourself.*
 
 ## Changelog
 
