@@ -180,7 +180,7 @@ fn get_xrefs(idb: &IDB, addr: Address, string: &str, dirpath: &Path) -> anyhow::
                 Ok(()) => println!("{:#x} in {func_name} -> {output_path:?}", cur.from()),
 
                 // Cleanup and bail if Hex-Rays decompiler license is not available
-                Err(HaruspexError::Decompile(IDAError::HexRays(e)))
+                Err(HaruspexError::DecompileFailed(IDAError::HexRays(e)))
                     if e.code() == HexRaysErrorCode::License =>
                 {
                     let _ = fs::remove_dir(dirpath_new);
@@ -190,7 +190,7 @@ fn get_xrefs(idb: &IDB, addr: Address, string: &str, dirpath: &Path) -> anyhow::
                 }
 
                 // Ignore other IDA errors
-                Err(HaruspexError::Decompile(_)) => continue,
+                Err(HaruspexError::DecompileFailed(_)) => continue,
 
                 // Bail in case of any other error
                 Err(e) => {
