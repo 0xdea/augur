@@ -15,7 +15,7 @@
 //! * Pseudo-code of each function that references a specific string is stored in a separate directory.
 //!
 //! ## Blog post
-//! * <https://security.humanativaspa.it/doing-vulnerability-research-with-ida-pro-and-rust> (*coming soon*)
+//! * <https://security.humanativaspa.it/streamlining-vulnerability-research-with-ida-pro-and-rust> (*coming soon*)
 //!
 //! ## See also
 //! * <https://github.com/0xdea/rhabdomancer>
