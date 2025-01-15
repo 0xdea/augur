@@ -179,7 +179,7 @@ fn get_xrefs(idb: &IDB, addr: Address, string: &str, dirpath: &Path) -> anyhow::
                     let _ = fs::remove_dir(dirpath_new);
                     let _ = fs::remove_dir(dirpath);
                     eprintln!("[!] Error: {e}");
-                    process::exit(1); // TODO the idb remains open, I don't like this! try handling in run/main instead and see if this is prevented
+                    process::exit(1); // TODO "don't panic!" the idb remains open, I don't like this! try handling in run/main instead and see if this is prevented
                 }
 
                 // Ignore other IDA errors
@@ -188,7 +188,7 @@ fn get_xrefs(idb: &IDB, addr: Address, string: &str, dirpath: &Path) -> anyhow::
                 // Bail in case of any other error
                 Err(e) => {
                     eprintln!("[!] Error: {e}");
-                    process::exit(1);
+                    process::exit(1); // TODO "don't panic!" the idb remains open, I don't like this! try handling in run/main instead and see if this is prevented
                 }
             }
 
