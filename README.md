@@ -21,7 +21,7 @@ TODO: screenshot?
 ## Features
 
 * Blazing fast, headless user experience courtesy of IDA Pro 9 and Binarly's idalib Rust bindings.
-* Decompilation feature based on [haruspex](https://github.com/0xdea/haruspex)'s `decompile_to_file` API.
+* Decompilation feature based on the `decompile_to_file` API exported by [haruspex](https://github.com/0xdea/haruspex).
 * Support for binary targets for any architecture implemented by IDA Pro's Hex-Rays decompiler.
 * Pseudo-code of each function that references a specific string is stored in a separate directory.
 
