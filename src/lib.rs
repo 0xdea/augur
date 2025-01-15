@@ -55,8 +55,10 @@
 //! * TODO
 //!
 
-#![cfg(unix)]
 #![doc(html_logo_url = "https://raw.githubusercontent.com/0xdea/augur/master/.img/logo.png")]
+
+#[cfg(not(unix))]
+compile_error!("only the `unix` target family is currently supported");
 
 use std::path::Path;
 use std::sync::atomic::{AtomicUsize, Ordering};
