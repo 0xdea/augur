@@ -25,7 +25,7 @@ TODO: screenshot?
 * Decompilation feature based on the `decompile_to_file` API exported by [haruspex](https://github.com/0xdea/haruspex).
 * Pseudo-code of each function that references a specific string is stored in a separate directory.
 
-## Blog post:
+## Blog post
 
 * <https://security.humanativaspa.it/streamlining-vulnerability-research-with-ida-pro-and-rust> (*coming soon*)
 
@@ -53,20 +53,6 @@ TODO
 ```
 
 ## Usage
-
-```sh
-TODO
-```
-
-## Examples
-
-TODO:
-
-```sh
-TODO
-```
-
-TODO:
 
 ```sh
 TODO
