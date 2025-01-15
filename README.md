@@ -71,4 +71,5 @@ documentation if you want to port it yourself to `windows` (or `wasm`).*
 
 ## TODO
 
+* Implement support for the `windows` target family.
 * TODO
