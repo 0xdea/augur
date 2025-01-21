@@ -60,9 +60,9 @@
 #[cfg(not(unix))]
 compile_error!("only the `unix` target family is currently supported");
 
+use std::fs;
 use std::path::Path;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::{fs, process};
 
 use haruspex::{decompile_to_file, HaruspexError};
 use idalib::decompiler::HexRaysErrorCode;
@@ -70,10 +70,12 @@ use idalib::idb::IDB;
 use idalib::xref::{XRef, XRefQuery};
 use idalib::{Address, IDAError};
 
-/// TODO
+/// Number of decompiled functions
 static COUNTER: AtomicUsize = AtomicUsize::new(0);
 
-/// TODO
+/// Extract strings and related pseudo-code from the binary at `filepath`, save them in
+/// `filepath.str`, and return how many functions were decompiled, or an error in case something
+/// goes wrong
 pub fn run(filepath: &Path) -> anyhow::Result<usize> {
     // Open target binary and run auto-analysis
     println!("[*] Trying to analyze binary file {filepath:?}");
@@ -116,8 +118,30 @@ pub fn run(filepath: &Path) -> anyhow::Result<usize> {
 
         // Traverse XREFs and dump related pseudo-code to output file
         idb.first_xref_to(addr, XRefQuery::ALL)
-            .map_or(Ok(()), |cur| traverse_xrefs(&idb, &cur, addr, &s, &dirpath))?;
-        // TODO map_or badaddr like in rhadomancer?
+            // TODO fix weird construct with no inference of E
+            .map_or(Ok::<(), HaruspexError>(()), |xref| {
+                match traverse_xrefs(&idb, &xref, addr, &s, &dirpath) {
+                    // Print XREF address, function name, and output path in case of successful decompilation
+                    Ok(()) => {
+                        /* TODO print stuff here? */
+                        Ok(())
+                    }
+
+                    // Cleanup and bail if Hex-Rays decompiler license is not available
+                    Err(HaruspexError::DecompileFailed(IDAError::HexRays(e)))
+                        if e.code() == HexRaysErrorCode::License =>
+                    {
+                        let _ = fs::remove_dir_all(&dirpath);
+                        return Err(IDAError::HexRays(e).into());
+                    }
+
+                    // Ignore other IDA errors
+                    Err(HaruspexError::DecompileFailed(_)) => return Ok(()),
+
+                    // Bail in case of any other error
+                    Err(e) => return Err(e.into()),
+                }
+            })?;
 
         /*
         match get_xrefs(&idb, addr, &s, &dirpath) {
@@ -177,29 +201,10 @@ fn traverse_xrefs(
         }
 
         // Decompile function and write pseudo-code to output file
-        match decompile_to_file(idb, &f, &output_path) {
-            // Print XREF address, function name, and output path in case of successful decompilation
-            Ok(()) => println!("{:#X} in {func_name} -> {output_path:?}", xref.from()),
+        decompile_to_file(idb, &f, &output_path)?;
 
-            // Cleanup and bail if Hex-Rays decompiler license is not available
-            Err(HaruspexError::DecompileFailed(IDAError::HexRays(e)))
-                if e.code() == HexRaysErrorCode::License =>
-            {
-                let _ = fs::remove_dir(dirpath_new);
-                let _ = fs::remove_dir(dirpath);
-                eprintln!("[!] Error: decompiler {e}");
-                process::exit(1); // TODO "don't panic!" the idb remains open, I don't like this! try handling in run/main instead and see if this is prevented
-            }
-
-            // Ignore other IDA errors
-            Err(HaruspexError::DecompileFailed(_)) => return Ok(()),
-
-            // Bail in case of any other error
-            Err(e) => {
-                eprintln!("[!] Error: {e}");
-                process::exit(1); // TODO "don't panic!" the idb remains open, I don't like this! try handling in run/main instead and see if this is prevented
-            }
-        }
+        // Print XREF address, function name, and output path in case of successful decompilation
+        println!("{:#X} in {func_name} -> {output_path:?}", xref.from());
 
         COUNTER.fetch_add(1, Ordering::Relaxed);
     } else {
