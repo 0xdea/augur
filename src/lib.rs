@@ -106,7 +106,7 @@ pub fn run(filepath: &Path) -> anyhow::Result<usize> {
     fs::create_dir_all(&dirpath)?;
     println!("[+] Output directory is ready");
 
-    // Locate cross-references to strings in target binary
+    // Locate cross-references to strings in target binary and dump related pseudo-code
     println!();
     println!("[*] Finding cross-references to strings...");
     for i in 0..idb.strings().len() {
@@ -119,6 +119,7 @@ pub fn run(filepath: &Path) -> anyhow::Result<usize> {
         // Traverse XREFs and dump related pseudo-code to output file
         idb.first_xref_to(addr, XRefQuery::ALL)
             // TODO fix weird construct with no inference of E
+            // TODO differentiate other possible errors, e.g. decompile errors vs. no xrefs -> create our own error type like we did in Haruspex?
             .map_or(Ok::<(), HaruspexError>(()), |xref| {
                 match traverse_xrefs(&idb, &xref, addr, &s, &dirpath) {
                     // Print XREF address, function name, and output path in case of successful decompilation
@@ -127,7 +128,7 @@ pub fn run(filepath: &Path) -> anyhow::Result<usize> {
                         Ok(())
                     }
 
-                    // Cleanup and bail if Hex-Rays decompiler license is not available
+                    // Cleanup and return an error if Hex-Rays decompiler license is not available
                     Err(HaruspexError::DecompileFailed(IDAError::HexRays(e)))
                         if e.code() == HexRaysErrorCode::License =>
                     {
@@ -138,38 +139,26 @@ pub fn run(filepath: &Path) -> anyhow::Result<usize> {
                     // Ignore other IDA errors
                     Err(HaruspexError::DecompileFailed(_)) => return Ok(()),
 
-                    // Bail in case of any other error
+                    // Return any other error
+                    // TODO test this at the end, e.g. don't create intermediate dirs; is cleanup needed BTW?
                     Err(e) => return Err(e.into()),
                 }
             })?;
-
-        /*
-        match get_xrefs(&idb, addr, &s, &dirpath) {
-            Ok(()) => { /* TODO print stuff here? */ }
-            Err(_) => continue, // TODO differentiate other possible errors, e.g. decompile errors vs. no xrefs -> create our own error type like we did in Haruspex? + test this at the end, e.g. don't create intermediate dirs
-        }
-        */
-
-        // TODO check decompiler license
-
-        /*
-        // Traverse XREFs and mark call locations
-        idb.first_xref_to(func.start_address(), XRefQuery::ALL)
-            .map_or(Ok(()), |cur| Self::traverse_xrefs(idb, &cur, &desc))
-         */
     }
 
-    // TODO: find strings, XREFs, mark? (in case use open_with above), use `haruspex::decompile_to_file`
     // TODO: print final output with counter
 
     // Remove output directory and return an error in case no functions were decompiled
     if COUNTER.load(Ordering::Relaxed) == 0 {
-        fs::remove_dir(&dirpath)?;
+        fs::remove_dir_all(&dirpath)?;
         return Err(anyhow::anyhow!(
             "no functions were decompiled, check your input file"
         ));
     }
 
+    println!();
+    println!("[+] Decompiled {COUNTER:?} functions into {dirpath:?}");
+    println!("[+] Done processing binary file {filepath:?}");
     Ok(COUNTER.load(Ordering::Relaxed))
 }
 
