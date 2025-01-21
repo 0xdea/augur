@@ -62,7 +62,7 @@ Alternatively, you can build from [source](https://github.com/0xdea/augur):
     $ export IDASDKDIR=/path/to/idasdk90 # or edit .cargo/config.toml
     $ export IDADIR=/path/to/ida # if not set, the build script will check common locations
     $ cargo build --release
-    ```å
+    ```
 
 ## Usage
 
