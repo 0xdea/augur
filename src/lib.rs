@@ -67,7 +67,7 @@ use std::{fs, process};
 use haruspex::{decompile_to_file, HaruspexError};
 use idalib::decompiler::HexRaysErrorCode;
 use idalib::idb::IDB;
-use idalib::xref::XRefQuery;
+use idalib::xref::{XRef, XRefQuery};
 use idalib::{Address, IDAError};
 
 /// TODO
@@ -113,10 +113,18 @@ pub fn run(filepath: &Path) -> anyhow::Result<usize> {
 
         // TODO
         println!("\n{addr:#X} {s:?} ");
+
+        // Traverse XREFs and dump related pseudo-code to output file
+        idb.first_xref_to(addr, XRefQuery::ALL)
+            .map_or(Ok(()), |cur| traverse_xrefs(&idb, &cur, addr, &s, &dirpath))?;
+        // TODO map_or badaddr like in rhadomancer?
+
+        /*
         match get_xrefs(&idb, addr, &s, &dirpath) {
             Ok(()) => { /* TODO print stuff here? */ }
             Err(_) => continue, // TODO differentiate other possible errors, e.g. decompile errors vs. no xrefs -> create our own error type like we did in Haruspex? + test this at the end, e.g. don't create intermediate dirs
         }
+        */
 
         // TODO check decompiler license
 
@@ -141,69 +149,67 @@ pub fn run(filepath: &Path) -> anyhow::Result<usize> {
     Ok(COUNTER.load(Ordering::Relaxed))
 }
 
-// TODO also rename, better manage all of these params, maybe in a struct
-fn get_xrefs(idb: &IDB, addr: Address, string: &str, dirpath: &Path) -> anyhow::Result<()> {
-    let mut cur = idb
-        .first_xref_to(addr, XRefQuery::ALL)
-        .ok_or_else(|| anyhow::anyhow!("no xrefs to address {addr:#X}"))?; // TODO map_or badaddr like in rhandomancer?
+/// Recursively traverse XREFs and dump related pseudo-code to output file
+/// TODO rename?, better manage all of these params, maybe in a struct
+fn traverse_xrefs(
+    idb: &IDB,
+    xref: &XRef,
+    addr: Address,
+    string: &str,
+    dirpath: &Path,
+) -> Result<(), HaruspexError> {
+    if let Some(f) = idb.function_at(xref.from()) {
+        // Generate output directory name
+        let string_printable = filter_printable_chars(string).replace(['.', '/', ' '], "_");
+        let output_dir = format!("{addr:X}_{string_printable}");
 
-    loop {
-        // TODO, refactor to make recursive calls like in rhabdomancer? add comment
-        if let Some(f) = idb.function_at(cur.from()) {
-            // Generate output directory name
-            let string_printable = filter_printable_chars(string).replace(['.', '/', ' '], "_");
-            let output_dir = format!("{addr:X}_{string_printable}");
+        // Generate output file name
+        let func_name = f.name().unwrap().replace(['.', '/'], "_");
+        let output_file = format!("{func_name}@{:X}", f.start_address());
 
-            // Generate output file name
-            let func_name = f.name().unwrap().replace(['.', '/'], "_");
-            let output_file = format!("{func_name}@{:X}", f.start_address());
+        // Generate output path
+        let dirpath_new = dirpath.join(&output_dir);
+        let output_path = dirpath_new.join(output_file).with_extension("c");
 
-            // Generate output path
-            let dirpath_new = dirpath.join(&output_dir);
-            let output_path = dirpath_new.join(output_file).with_extension("c");
-
-            // Create output directory if needed
-            if !dirpath_new.exists() {
-                fs::create_dir(&dirpath_new)?;
-            }
-
-            // Decompile function and write pseudo-code to output file
-            match decompile_to_file(idb, &f, &output_path) {
-                // Print XREF address, function name, and output path in case of successful decompilation
-                Ok(()) => println!("{:#X} in {func_name} -> {output_path:?}", cur.from()),
-
-                // Cleanup and bail if Hex-Rays decompiler license is not available
-                Err(HaruspexError::DecompileFailed(IDAError::HexRays(e)))
-                    if e.code() == HexRaysErrorCode::License =>
-                {
-                    let _ = fs::remove_dir(dirpath_new);
-                    let _ = fs::remove_dir(dirpath);
-                    eprintln!("[!] Error: {e}");
-                    process::exit(1); // TODO "don't panic!" the idb remains open, I don't like this! try handling in run/main instead and see if this is prevented
-                }
-
-                // Ignore other IDA errors
-                Err(HaruspexError::DecompileFailed(_)) => continue,
-
-                // Bail in case of any other error
-                Err(e) => {
-                    eprintln!("[!] Error: {e}");
-                    process::exit(1); // TODO "don't panic!" the idb remains open, I don't like this! try handling in run/main instead and see if this is prevented
-                }
-            }
-
-            COUNTER.fetch_add(1, Ordering::Relaxed);
-        } else {
-            println!("{:#X} in <unknown>", cur.from());
+        // Create output directory if needed
+        if !dirpath_new.exists() {
+            fs::create_dir(&dirpath_new)?;
         }
 
-        match cur.next_to() {
-            Some(next) => cur = next,
-            None => break,
+        // Decompile function and write pseudo-code to output file
+        match decompile_to_file(idb, &f, &output_path) {
+            // Print XREF address, function name, and output path in case of successful decompilation
+            Ok(()) => println!("{:#X} in {func_name} -> {output_path:?}", xref.from()),
+
+            // Cleanup and bail if Hex-Rays decompiler license is not available
+            Err(HaruspexError::DecompileFailed(IDAError::HexRays(e)))
+                if e.code() == HexRaysErrorCode::License =>
+            {
+                let _ = fs::remove_dir(dirpath_new);
+                let _ = fs::remove_dir(dirpath);
+                eprintln!("[!] Error: decompiler {e}");
+                process::exit(1); // TODO "don't panic!" the idb remains open, I don't like this! try handling in run/main instead and see if this is prevented
+            }
+
+            // Ignore other IDA errors
+            Err(HaruspexError::DecompileFailed(_)) => return Ok(()),
+
+            // Bail in case of any other error
+            Err(e) => {
+                eprintln!("[!] Error: {e}");
+                process::exit(1); // TODO "don't panic!" the idb remains open, I don't like this! try handling in run/main instead and see if this is prevented
+            }
         }
+
+        COUNTER.fetch_add(1, Ordering::Relaxed);
+    } else {
+        println!("{:#X} in <unknown>", xref.from());
     }
 
-    Ok(())
+    // Process next XREF
+    xref.next_to().map_or(Ok(()), |next| {
+        traverse_xrefs(idb, &next, addr, string, dirpath)
+    })
 }
 
 // TODO make this a closure? or a method for a MyString type, perhaps aliased instead of a newtype
