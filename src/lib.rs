@@ -94,10 +94,17 @@ use idalib::{Address, IDAError};
 static COUNTER: AtomicUsize = AtomicUsize::new(0);
 
 /// IDA string newtype
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 struct IDAString(String);
 
+impl AsRef<str> for IDAString {
+    fn as_ref(&self) -> &str {
+        &self.0
+    }
+}
+
 impl Deref for IDAString {
-    type Target = String;
+    type Target = str;
     fn deref(&self) -> &Self::Target {
         &self.0
     }
@@ -110,6 +117,52 @@ impl From<String> for IDAString {
 }
 
 impl IDAString {
+    /// Recursively traverse XREFs and dump related pseudo-code to output file
+    fn traverse_xrefs(
+        &self,
+        idb: &IDB,
+        xref: &XRef,
+        addr: Address,
+        dirpath: &Path,
+    ) -> Result<(), HaruspexError> {
+        // If XREF is in a function, dump the function's pseudo-code
+        if let Some(f) = idb.function_at(xref.from()) {
+            // Generate output directory name
+            let string_printable = self.filter_printable_chars().replace(['.', '/', ' '], "_");
+            let output_dir = format!("{addr:X}_{string_printable}");
+
+            // Generate output file name
+            let func_name = f.name().unwrap().replace(['.', '/'], "_");
+            let output_file = format!("{func_name}@{:X}", f.start_address());
+
+            // Generate output path
+            let dirpath_new = dirpath.join(&output_dir);
+            let output_path = dirpath_new.join(output_file).with_extension("c");
+
+            // Create output directory if needed
+            if !dirpath_new.exists() {
+                fs::create_dir(&dirpath_new)?;
+            }
+
+            // Decompile function and write pseudo-code to output file
+            decompile_to_file(idb, &f, &output_path)?;
+
+            // Print XREF address, function name, and output path in case of successful decompilation
+            println!("{:#X} in {func_name} -> {output_path:?}", xref.from());
+
+            COUNTER.fetch_add(1, Ordering::Relaxed);
+        } else {
+            // If XREF is not in a function, simply print its location
+            println!("{:#X} in <unknown>", xref.from());
+        }
+
+        // Process next XREF
+        xref.next_to().map_or(Ok(()), |next| {
+            self.traverse_xrefs(idb, &next, addr, dirpath)
+        })
+    }
+
+    /// Take an `IDAString` as input and return a `String` that contains only the printable chars
     fn filter_printable_chars(&self) -> String {
         self.chars()
             .filter(|c| c.is_ascii_graphic() || *c == ' ')
@@ -155,14 +208,14 @@ pub fn run(filepath: &Path) -> anyhow::Result<usize> {
     println!("[*] Finding cross-references to strings...");
     for i in 0..idb.strings().len() {
         // Extract string and its address
-        let s = idb.strings().get_by_index(i).unwrap();
+        let string: IDAString = idb.strings().get_by_index(i).unwrap().into();
         let addr = idb.strings().get_address_by_index(i).unwrap();
-        println!("\n{addr:#X} {s:?} ");
+        println!("\n{addr:#X} {:?} ", string.as_ref());
 
         // Traverse XREFs to string and dump related pseudo-code to output file
         idb.first_xref_to(addr, XRefQuery::ALL)
             .map_or(Ok::<(), HaruspexError>(()), |xref| {
-                match traverse_xrefs(&idb, &xref, addr, &s.into(), &dirpath) {
+                match string.traverse_xrefs(&idb, &xref, addr, &dirpath) {
                     // Cleanup and return an error if Hex-Rays decompiler license is not available
                     Err(HaruspexError::DecompileFailed(IDAError::HexRays(e)))
                         if e.code() == HexRaysErrorCode::License =>
@@ -193,51 +246,4 @@ pub fn run(filepath: &Path) -> anyhow::Result<usize> {
     println!("[+] Decompiled {COUNTER:?} functions into {dirpath:?}");
     println!("[+] Done processing binary file {filepath:?}");
     Ok(COUNTER.load(Ordering::Relaxed))
-}
-
-/// Recursively traverse XREFs and dump related pseudo-code to output file
-fn traverse_xrefs(
-    idb: &IDB,
-    xref: &XRef,
-    addr: Address,
-    string: &IDAString,
-    dirpath: &Path,
-) -> Result<(), HaruspexError> {
-    // If XREF is in a function, dump the function's pseudo-code
-    if let Some(f) = idb.function_at(xref.from()) {
-        // Generate output directory name
-        let string_printable = string
-            .filter_printable_chars()
-            .replace(['.', '/', ' '], "_");
-        let output_dir = format!("{addr:X}_{string_printable}");
-
-        // Generate output file name
-        let func_name = f.name().unwrap().replace(['.', '/'], "_");
-        let output_file = format!("{func_name}@{:X}", f.start_address());
-
-        // Generate output path
-        let dirpath_new = dirpath.join(&output_dir);
-        let output_path = dirpath_new.join(output_file).with_extension("c");
-
-        // Create output directory if needed
-        if !dirpath_new.exists() {
-            fs::create_dir(&dirpath_new)?;
-        }
-
-        // Decompile function and write pseudo-code to output file
-        decompile_to_file(idb, &f, &output_path)?;
-
-        // Print XREF address, function name, and output path in case of successful decompilation
-        println!("{:#X} in {func_name} -> {output_path:?}", xref.from());
-
-        COUNTER.fetch_add(1, Ordering::Relaxed);
-    } else {
-        // If XREF is not in a function, simply print its location
-        println!("{:#X} in <unknown>", xref.from());
-    }
-
-    // Process next XREF
-    xref.next_to().map_or(Ok(()), |next| {
-        traverse_xrefs(idb, &next, addr, string, dirpath)
-    })
 }
