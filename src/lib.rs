@@ -74,8 +74,8 @@ use idalib::{Address, IDAError};
 static COUNTER: AtomicUsize = AtomicUsize::new(0);
 
 /// Extract strings and related pseudo-code from the binary at `filepath`, save them in
-/// `filepath.str`, and return how many functions were decompiled, or an error in case something
-/// goes wrong
+/// `filepath.str`, and return how many functions were decompiled, or an error in case
+/// something goes wrong
 pub fn run(filepath: &Path) -> anyhow::Result<usize> {
     // Open target binary and run auto-analysis
     println!("[*] Trying to analyze binary file {filepath:?}");
@@ -110,43 +110,34 @@ pub fn run(filepath: &Path) -> anyhow::Result<usize> {
     println!();
     println!("[*] Finding cross-references to strings...");
     for i in 0..idb.strings().len() {
+        // Extract string and its address
         let s = idb.strings().get_by_index(i).unwrap();
         let addr = idb.strings().get_address_by_index(i).unwrap();
-
-        // TODO
         println!("\n{addr:#X} {s:?} ");
 
-        // Traverse XREFs and dump related pseudo-code to output file
+        // Traverse XREFs to string and dump related pseudo-code to output file
         idb.first_xref_to(addr, XRefQuery::ALL)
             // TODO fix weird construct with no inference of E
             // TODO differentiate other possible errors, e.g. decompile errors vs. no xrefs -> create our own error type like we did in Haruspex?
             .map_or(Ok::<(), HaruspexError>(()), |xref| {
                 match traverse_xrefs(&idb, &xref, addr, &s, &dirpath) {
-                    // Print XREF address, function name, and output path in case of successful decompilation
-                    Ok(()) => {
-                        /* TODO print stuff here? */
-                        Ok(())
-                    }
-
                     // Cleanup and return an error if Hex-Rays decompiler license is not available
                     Err(HaruspexError::DecompileFailed(IDAError::HexRays(e)))
                         if e.code() == HexRaysErrorCode::License =>
                     {
                         let _ = fs::remove_dir_all(&dirpath);
-                        return Err(IDAError::HexRays(e).into());
+                        Err(IDAError::HexRays(e).into())
                     }
 
                     // Ignore other IDA errors
-                    Err(HaruspexError::DecompileFailed(_)) => return Ok(()),
+                    Err(HaruspexError::DecompileFailed(_)) | Ok(()) => Ok(()),
 
                     // Return any other error
                     // TODO test this at the end, e.g. don't create intermediate dirs; is cleanup needed BTW?
-                    Err(e) => return Err(e.into()),
+                    Err(e) => Err(e),
                 }
             })?;
     }
-
-    // TODO: print final output with counter
 
     // Remove output directory and return an error in case no functions were decompiled
     if COUNTER.load(Ordering::Relaxed) == 0 {
@@ -171,6 +162,7 @@ fn traverse_xrefs(
     string: &str,
     dirpath: &Path,
 ) -> Result<(), HaruspexError> {
+    // If XREF is in a function, dump the function's pseudo-code
     if let Some(f) = idb.function_at(xref.from()) {
         // Generate output directory name
         let string_printable = filter_printable_chars(string).replace(['.', '/', ' '], "_");
@@ -197,6 +189,7 @@ fn traverse_xrefs(
 
         COUNTER.fetch_add(1, Ordering::Relaxed);
     } else {
+        // If XREF is not in a function, simply print its location
         println!("{:#X} in <unknown>", xref.from());
     }
 
