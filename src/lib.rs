@@ -112,7 +112,7 @@ pub fn run(filepath: &Path) -> anyhow::Result<usize> {
         let addr = idb.strings().get_address_by_index(i).unwrap();
 
         // TODO
-        println!("\n{addr:#x} {s:?} ");
+        println!("\n{addr:#X} {s:?} ");
         match get_xrefs(&idb, addr, &s, &dirpath) {
             Ok(()) => { /* TODO print stuff here? */ }
             Err(_) => continue, // TODO differentiate other possible errors, e.g. decompile errors vs. no xrefs -> create our own error type like we did in Haruspex? + test this at the end, e.g. don't create intermediate dirs
@@ -145,18 +145,18 @@ pub fn run(filepath: &Path) -> anyhow::Result<usize> {
 fn get_xrefs(idb: &IDB, addr: Address, string: &str, dirpath: &Path) -> anyhow::Result<()> {
     let mut cur = idb
         .first_xref_to(addr, XRefQuery::ALL)
-        .ok_or_else(|| anyhow::anyhow!("no xrefs to address {addr:#x}"))?; // TODO map_or badaddr like in rhandomancer?
+        .ok_or_else(|| anyhow::anyhow!("no xrefs to address {addr:#X}"))?; // TODO map_or badaddr like in rhandomancer?
 
     loop {
         // TODO, refactor to make recursive calls like in rhabdomancer? add comment
         if let Some(f) = idb.function_at(cur.from()) {
             // Generate output directory name
             let string_printable = filter_printable_chars(string).replace(['.', '/', ' '], "_");
-            let output_dir = format!("{addr:x}_{string_printable}");
+            let output_dir = format!("{addr:X}_{string_printable}");
 
             // Generate output file name
             let func_name = f.name().unwrap().replace(['.', '/'], "_");
-            let output_file = format!("{func_name}@{:x}", f.start_address());
+            let output_file = format!("{func_name}@{:X}", f.start_address());
 
             // Generate output path
             let dirpath_new = dirpath.join(&output_dir);
@@ -170,7 +170,7 @@ fn get_xrefs(idb: &IDB, addr: Address, string: &str, dirpath: &Path) -> anyhow::
             // Decompile function and write pseudo-code to output file
             match decompile_to_file(idb, &f, &output_path) {
                 // Print XREF address, function name, and output path in case of successful decompilation
-                Ok(()) => println!("{:#x} in {func_name} -> {output_path:?}", cur.from()),
+                Ok(()) => println!("{:#X} in {func_name} -> {output_path:?}", cur.from()),
 
                 // Cleanup and bail if Hex-Rays decompiler license is not available
                 Err(HaruspexError::DecompileFailed(IDAError::HexRays(e)))
@@ -194,7 +194,7 @@ fn get_xrefs(idb: &IDB, addr: Address, string: &str, dirpath: &Path) -> anyhow::
 
             COUNTER.fetch_add(1, Ordering::Relaxed);
         } else {
-            println!("{:#x} in <unknown>", cur.from());
+            println!("{:#X} in <unknown>", cur.from());
         }
 
         match cur.next_to() {
