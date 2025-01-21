@@ -72,6 +72,7 @@
 //!
 //! ## TODO
 //! * Implement support for the `windows` target family.
+//! * Allow users to choose to process string cross-references even if decompiler is unavailable.
 //!
 
 #![doc(html_logo_url = "https://raw.githubusercontent.com/0xdea/augur/master/.img/logo.png")]
@@ -125,7 +126,7 @@ impl IDAString {
         addr: Address,
         dirpath: &Path,
     ) -> Result<(), HaruspexError> {
-        // If XREF is in a function, dump the function's pseudo-code
+        // If XREF is in a function, dump the function's pseudo-code, otherwise just print its address
         if let Some(f) = idb.function_at(xref.from()) {
             // Generate output directory name
             let string_printable = self.filter_printable_chars().replace(['.', '/', ' '], "_");
@@ -152,7 +153,7 @@ impl IDAString {
 
             COUNTER.fetch_add(1, Ordering::Relaxed);
         } else {
-            // If XREF is not in a function, simply print its location
+            // Print XREF address
             println!("{:#X} in <unknown>", xref.from());
         }
 
@@ -170,9 +171,9 @@ impl IDAString {
     }
 }
 
-/// Extract strings and related pseudo-code from the binary at `filepath`, save them in
-/// `filepath.str`, and return how many functions were decompiled, or an error in case
-/// something goes wrong
+/// Extract strings and pseudo-code of each function that references them from the binary at
+/// `filepath`, save them in `filepath.str`, and return how many functions were decompiled, or an
+/// error in case something goes wrong
 pub fn run(filepath: &Path) -> anyhow::Result<usize> {
     // Open target binary and run auto-analysis
     println!("[*] Trying to analyze binary file {filepath:?}");
@@ -207,7 +208,7 @@ pub fn run(filepath: &Path) -> anyhow::Result<usize> {
     println!();
     println!("[*] Finding cross-references to strings...");
     for i in 0..idb.strings().len() {
-        // Extract string and its address
+        // Extract each string with its address
         let string: IDAString = idb.strings().get_by_index(i).unwrap().into();
         let addr = idb.strings().get_address_by_index(i).unwrap();
         println!("\n{addr:#X} {:?} ", string.as_ref());
