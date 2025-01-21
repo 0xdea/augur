@@ -38,7 +38,7 @@
 //!
 //! ## Usage
 //! ```sh
-//! TODO
+//! TODO: add final code and/or vim command in example
 //! ```
 //!
 //! ## Tested with
