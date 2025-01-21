@@ -26,20 +26,40 @@
 //!
 //! ## Installing
 //! The easiest way to get the latest release is via [crates.io](https://crates.io/crates/augur):
-//! ```sh
-//! TODO
-//! ```
+//! 1. Download, install, and configure IDA Pro (see <https://hex-rays.com/ida-pro>).
+//! 2. Download and extract the IDA SDK (see <https://docs.hex-rays.com/developer-guide>).
+//! 3. Install augur as follows:
+//!     ```sh
+//!     $ export IDASDKDIR=/path/to/idasdk90
+//!     $ export IDADIR=/path/to/ida # if not set, the build script will check common locations
+//!     $ cargo install augur
+//!     ```
 //!
 //! ## Compiling
 //! Alternatively, you can build from [source](https://github.com/0xdea/augur):
-//! ```sh
-//! TODO
-//! ```
+//! 1. Download, install, and configure IDA Pro (see <https://hex-rays.com/ida-pro>).
+//! 2. Download and extract the IDA SDK (see <https://docs.hex-rays.com/developer-guide>).
+//! 3. Compile augur as follows:
+//!     ```sh
+//!     $ git clone https://github.com/0xdea/augur
+//!     $ cd augur
+//!     $ export IDASDKDIR=/path/to/idasdk90 # or edit .cargo/config.toml
+//!     $ export IDADIR=/path/to/ida # if not set, the build script will check common locations
+//!     $ cargo build --release
+//!     ```
 //!
 //! ## Usage
-//! ```sh
-//! TODO: add final code and/or vim command in example
-//! ```
+//! 1. Make sure IDA Pro is properly configured with a valid license.
+//! 2. Run augur as follows:
+//!     ```sh
+//!     $ augur <binary_file>
+//!     ```
+//! 3. Find the extracted pseudo-code of each decompiled function in the `binary_file.str` directory,
+//!    organized by string:
+//!     ```sh
+//!     $ vim <binary_file>.str
+//!     $ code <binary_file>.str
+//!     ```
 //!
 //! ## Tested with
 //! * IDA Pro 9.0.241217 on macOS arm64 and Linux x64.
@@ -52,7 +72,6 @@
 //!
 //! ## TODO
 //! * Implement support for the `windows` target family.
-//! * TODO
 //!
 
 #![doc(html_logo_url = "https://raw.githubusercontent.com/0xdea/augur/master/.img/logo.png")]
@@ -74,7 +93,7 @@ use idalib::{Address, IDAError};
 /// Number of decompiled functions
 static COUNTER: AtomicUsize = AtomicUsize::new(0);
 
-/// IDA string type
+/// IDA string newtype
 struct IDAString(String);
 
 impl Deref for IDAString {
