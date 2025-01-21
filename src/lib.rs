@@ -73,6 +73,7 @@
 //! ## TODO
 //! * Implement support for the `windows` target family.
 //! * Allow users to choose to process string cross-references even if decompiler is unavailable.
+//! * Implement functionality similar to <https://github.com/joxeankoret/idamagicstrings>.
 //!
 
 #![doc(html_logo_url = "https://raw.githubusercontent.com/0xdea/augur/master/.img/logo.png")]

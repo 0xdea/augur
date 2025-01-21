@@ -92,3 +92,4 @@ documentation if you want to port it yourself to `windows` (or `wasm`).*
 
 * Implement support for the `windows` target family.
 * Allow users to choose to process string cross-references even if decompiler is unavailable.
+* Implement functionality similar to <https://github.com/joxeankoret/idamagicstrings>.
