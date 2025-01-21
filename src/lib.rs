@@ -106,7 +106,7 @@ pub fn run(filepath: &Path) -> anyhow::Result<usize> {
     fs::create_dir_all(&dirpath)?;
     println!("[+] Output directory is ready");
 
-    // Locate cross-references to strings in target binary and dump related pseudo-code
+    // Locate XREFs to strings in target binary and dump related pseudo-code
     println!();
     println!("[*] Finding cross-references to strings...");
     for i in 0..idb.strings().len() {
@@ -117,19 +117,17 @@ pub fn run(filepath: &Path) -> anyhow::Result<usize> {
 
         // Traverse XREFs to string and dump related pseudo-code to output file
         idb.first_xref_to(addr, XRefQuery::ALL)
-            // TODO fix weird construct with no inference of E
-            // TODO differentiate other possible errors, e.g. decompile errors vs. no xrefs -> create our own error type like we did in Haruspex?
             .map_or(Ok::<(), HaruspexError>(()), |xref| {
                 match traverse_xrefs(&idb, &xref, addr, &s, &dirpath) {
                     // Cleanup and return an error if Hex-Rays decompiler license is not available
                     Err(HaruspexError::DecompileFailed(IDAError::HexRays(e)))
                         if e.code() == HexRaysErrorCode::License =>
                     {
-                        let _ = fs::remove_dir_all(&dirpath);
+                        fs::remove_dir_all(&dirpath)?;
                         Err(IDAError::HexRays(e).into())
                     }
 
-                    // Ignore other IDA errors
+                    // Ignore other IDA errors and do nothing when XREF processing is finished
                     Err(HaruspexError::DecompileFailed(_)) | Ok(()) => Ok(()),
 
                     // Return any other error
@@ -154,7 +152,6 @@ pub fn run(filepath: &Path) -> anyhow::Result<usize> {
 }
 
 /// Recursively traverse XREFs and dump related pseudo-code to output file
-/// TODO rename?, better manage all of these params, maybe in a struct
 fn traverse_xrefs(
     idb: &IDB,
     xref: &XRef,
