@@ -61,6 +61,7 @@
 compile_error!("only the `unix` target family is currently supported");
 
 use std::fs;
+use std::ops::Deref;
 use std::path::Path;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -72,6 +73,30 @@ use idalib::{Address, IDAError};
 
 /// Number of decompiled functions
 static COUNTER: AtomicUsize = AtomicUsize::new(0);
+
+/// IDA string type
+struct IDAString(String);
+
+impl Deref for IDAString {
+    type Target = String;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl From<String> for IDAString {
+    fn from(value: String) -> Self {
+        Self(value)
+    }
+}
+
+impl IDAString {
+    fn filter_printable_chars(&self) -> String {
+        self.chars()
+            .filter(|c| c.is_ascii_graphic() || *c == ' ')
+            .collect()
+    }
+}
 
 /// Extract strings and related pseudo-code from the binary at `filepath`, save them in
 /// `filepath.str`, and return how many functions were decompiled, or an error in case
@@ -118,7 +143,7 @@ pub fn run(filepath: &Path) -> anyhow::Result<usize> {
         // Traverse XREFs to string and dump related pseudo-code to output file
         idb.first_xref_to(addr, XRefQuery::ALL)
             .map_or(Ok::<(), HaruspexError>(()), |xref| {
-                match traverse_xrefs(&idb, &xref, addr, &s, &dirpath) {
+                match traverse_xrefs(&idb, &xref, addr, &s.into(), &dirpath) {
                     // Cleanup and return an error if Hex-Rays decompiler license is not available
                     Err(HaruspexError::DecompileFailed(IDAError::HexRays(e)))
                         if e.code() == HexRaysErrorCode::License =>
@@ -156,13 +181,15 @@ fn traverse_xrefs(
     idb: &IDB,
     xref: &XRef,
     addr: Address,
-    string: &str,
+    string: &IDAString,
     dirpath: &Path,
 ) -> Result<(), HaruspexError> {
     // If XREF is in a function, dump the function's pseudo-code
     if let Some(f) = idb.function_at(xref.from()) {
         // Generate output directory name
-        let string_printable = filter_printable_chars(string).replace(['.', '/', ' '], "_");
+        let string_printable = string
+            .filter_printable_chars()
+            .replace(['.', '/', ' '], "_");
         let output_dir = format!("{addr:X}_{string_printable}");
 
         // Generate output file name
@@ -194,11 +221,4 @@ fn traverse_xrefs(
     xref.next_to().map_or(Ok(()), |next| {
         traverse_xrefs(idb, &next, addr, string, dirpath)
     })
-}
-
-// TODO make this a closure? or a method for a MyString type, perhaps aliased instead of a newtype
-fn filter_printable_chars(s: &str) -> String {
-    s.chars()
-        .filter(|c| c.is_ascii_graphic() || *c == ' ')
-        .collect()
 }
