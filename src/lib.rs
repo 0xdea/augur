@@ -7,7 +7,8 @@
 //! > -- A.
 //!
 //! Augur is a blazing fast IDA Pro headless plugin that extracts strings and related pseudo-code
-//! from a binary file.
+//! from a binary file. It stores pseudo-code of functions that reference strings in an organized
+//! directory tree.
 //!
 //! ## Features
 //! * Blazing fast, headless user experience courtesy of IDA Pro 9 and Binarly's idalib Rust bindings.
@@ -96,7 +97,7 @@ use idalib::{Address, IDAError};
 static COUNTER: AtomicUsize = AtomicUsize::new(0);
 
 /// IDA string newtype
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 struct IDAString(String);
 
 impl AsRef<str> for IDAString {
