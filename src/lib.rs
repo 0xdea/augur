@@ -96,7 +96,7 @@ use idalib::{Address, IDAError};
 /// Number of decompiled functions
 static COUNTER: AtomicUsize = AtomicUsize::new(0);
 
-/// IDA string newtype
+/// IDA string type that holds strings extracted from IDA's string list
 #[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 struct IDAString(String);
 
@@ -131,20 +131,20 @@ impl IDAString {
         // If XREF is in a function, dump the function's pseudo-code, otherwise just print its address
         if let Some(f) = idb.function_at(xref.from()) {
             // Generate output directory name
-            let string_printable = self.filter_printable_chars().replace(['.', '/', ' '], "_");
-            let output_dir = format!("{addr:X}_{string_printable}");
+            let string_name = self.filter_printable_chars().replace(['.', '/', ' '], "_");
+            let output_dir = format!("{addr:X}_{string_name}");
 
             // Generate output file name
             let func_name = f.name().unwrap().replace(['.', '/'], "_");
             let output_file = format!("{func_name}@{:X}", f.start_address());
 
             // Generate output path
-            let dirpath_new = dirpath.join(&output_dir);
-            let output_path = dirpath_new.join(output_file).with_extension("c");
+            let dirpath_sub = dirpath.join(&output_dir);
+            let output_path = dirpath_sub.join(output_file).with_extension("c");
 
             // Create output directory if needed
-            if !dirpath_new.exists() {
-                fs::create_dir(&dirpath_new)?;
+            if !dirpath_sub.exists() {
+                fs::create_dir(&dirpath_sub)?;
             }
 
             // Decompile function and write pseudo-code to output file
@@ -152,10 +152,9 @@ impl IDAString {
 
             // Print XREF address, function name, and output path in case of successful decompilation
             println!("{:#X} in {func_name} -> {output_path:?}", xref.from());
-
             COUNTER.fetch_add(1, Ordering::Relaxed);
         } else {
-            // Print XREF address
+            // Print only XREF address
             println!("{:#X} in <unknown>", xref.from());
         }
 
@@ -165,7 +164,7 @@ impl IDAString {
         })
     }
 
-    /// Take an `IDAString` as input and return a `String` that contains only the printable chars
+    /// Take an `IDAString` as input and return a `String` that contains only its printable chars
     fn filter_printable_chars(&self) -> String {
         self.chars()
             .filter(|c| c.is_ascii_graphic() || *c == ' ')
@@ -174,8 +173,9 @@ impl IDAString {
 }
 
 /// Extract strings and pseudo-code of each function that references them from the binary at
-/// `filepath`, save them in `filepath.str`, and return how many functions were decompiled, or an
-/// error in case something goes wrong
+/// `filepath` and save them in `filepath.str`.
+///
+/// Return how many functions were decompiled, or an error in case something goes wrong.
 pub fn run(filepath: &Path) -> anyhow::Result<usize> {
     // Open target binary and run auto-analysis
     println!("[*] Trying to analyze binary file {filepath:?}");
@@ -210,7 +210,7 @@ pub fn run(filepath: &Path) -> anyhow::Result<usize> {
     println!();
     println!("[*] Finding cross-references to strings...");
     for i in 0..idb.strings().len() {
-        // Extract each string with its address
+        // Extract string with its address
         let string: IDAString = idb.strings().get_by_index(i).unwrap().into();
         let addr = idb.strings().get_address_by_index(i).unwrap();
         println!("\n{addr:#X} {:?} ", string.as_ref());
@@ -232,6 +232,7 @@ pub fn run(filepath: &Path) -> anyhow::Result<usize> {
 
                     // Return any other error
                     // TODO test this at the end, e.g. don't create intermediate dirs; is cleanup needed BTW?
+                    // TODO also test with GUI to check the tool behaves as expected
                     Err(e) => Err(e),
                 }
             })?;
