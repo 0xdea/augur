@@ -20,6 +20,9 @@ anyhow = "1.0"
 [build-dependencies]
 idalib-build = "0.4"
 
+[dev-dependencies]
+walkdir = "2.5"
+
 [[test]]
 name = "tests"
 path = "tests/main.rs"

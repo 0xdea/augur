@@ -231,8 +231,6 @@ pub fn run(filepath: &Path) -> anyhow::Result<usize> {
                     Err(HaruspexError::DecompileFailed(_)) | Ok(()) => Ok(()),
 
                     // Return any other error
-                    // TODO test this at the end, e.g. don't create intermediate dirs; is cleanup needed BTW?
-                    // TODO also test with GUI to check the tool behaves as expected
                     Err(e) => Err(e),
                 }
             })?;
@@ -247,7 +245,7 @@ pub fn run(filepath: &Path) -> anyhow::Result<usize> {
     }
 
     println!();
-    println!("[+] Decompiled {COUNTER:?} functions into {dirpath:?}");
+    println!("[+] Decompiled {COUNTER:?} functions (including duplicates) into {dirpath:?}");
     println!("[+] Done processing binary file {filepath:?}");
     Ok(COUNTER.load(Ordering::Relaxed))
 }
