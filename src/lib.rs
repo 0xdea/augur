@@ -253,7 +253,7 @@ pub fn run(filepath: &Path) -> anyhow::Result<usize> {
     }
 
     println!();
-    println!("[+] Decompiled {COUNTER:?} functions (including duplicates) into {dirpath:?}");
+    println!("[+] Found {COUNTER:?} string usages in functions, decompiled into {dirpath:?}");
     println!("[+] Done processing binary file {filepath:?}");
     Ok(COUNTER.load(Ordering::Relaxed))
 }
