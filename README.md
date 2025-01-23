@@ -17,7 +17,7 @@
 Augur is a blazing fast IDA Pro headless plugin that extracts strings and related pseudo-code from a binary file.
 It stores pseudo-code of functions that reference strings in an organized directory tree.
 
-TODO: screenshot?
+![](https://raw.githubusercontent.com/0xdea/augur/master/.img/screen01.png)
 
 ## Features
 
