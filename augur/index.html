@@ -1,0 +1,73 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="augur - Tool to extract strings and related pseudo-code Copyright (c) 2024-2025 Marco Ivaldi raptor@0xdeadbeef.info"><title>augur - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../static.files/rustdoc-b0742ba02757f159.css"><meta name="rustdoc-vars" data-root-path="../" data-static-root-path="../static.files/" data-current-crate="augur" data-themes="" data-resource-suffix="" data-rustdoc-version="1.83.0 (90b35a623 2024-11-26)" data-channel="1.83.0" data-search-js="search-f0d225181b97f9a4.js" data-settings-js="settings-805db61a62df4bd2.js" ><script src="../static.files/storage-1d39b6787ed640ff.js"></script><script defer src="../crates.js"></script><script defer src="../static.files/main-f070b9041d14864c.js"></script><noscript><link rel="stylesheet" href="../static.files/noscript-0111fcff984fae8f.css"></noscript><link rel="alternate icon" type="image/png" href="../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc mod crate"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button><a class="logo-container" href="../augur/index.html"><img src="https://raw.githubusercontent.com/0xdea/augur/master/.img/logo.png" alt=""></a></nav><nav class="sidebar"><div class="sidebar-crate"><a class="logo-container" href="../augur/index.html"><img src="https://raw.githubusercontent.com/0xdea/augur/master/.img/logo.png" alt="logo"></a><h2><a href="../augur/index.html">augur</a><span class="version">0.1.0</span></h2></div><div class="sidebar-elems"><ul class="block"><li><a id="all-types" href="all.html">All Items</a></li></ul><section id="rustdoc-toc"><h3><a href="#">Sections</a></h3><ul class="block top-toc"><li><a href="#features" title="Features">Features</a></li><li><a href="#blog-post" title="Blog post">Blog post</a></li><li><a href="#see-also" title="See also">See also</a></li><li><a href="#installing" title="Installing">Installing</a></li><li><a href="#compiling" title="Compiling">Compiling</a></li><li><a href="#usage" title="Usage">Usage</a></li><li><a href="#tested-with" title="Tested with">Tested with</a></li><li><a href="#changelog" title="Changelog">Changelog</a></li><li><a href="#todo" title="TODO">TODO</a></li></ul><h3><a href="#structs">Crate Items</a></h3><ul class="block"><li><a href="#structs" title="Structs">Structs</a></li><li><a href="#statics" title="Statics">Statics</a></li><li><a href="#functions" title="Functions">Functions</a></li></ul></section><div id="rustdoc-modnav"></div></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1>Crate <span>augur</span><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><rustdoc-toolbar></rustdoc-toolbar><span class="sub-heading"><a class="src" href="../src/augur/lib.rs.html#1-259">source</a> </span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>augur - Tool to extract strings and related pseudo-code
+Copyright (c) 2024-2025 Marco Ivaldi <a href="mailto:raptor@0xdeadbeef.info">raptor@0xdeadbeef.info</a></p>
+<blockquote>
+<p>“In fact I’ve actually triggered buffer overflows by just entering my real name.”</p>
+<p>– A.</p>
+</blockquote>
+<p>Augur is a blazing fast IDA Pro headless plugin that extracts strings and related pseudo-code
+from a binary file. It stores pseudo-code of functions that reference strings in an organized
+directory tree.</p>
+<h3 id="features"><a class="doc-anchor" href="#features">§</a>Features</h3>
+<ul>
+<li>Blazing fast, headless user experience courtesy of IDA Pro 9 and Binarly’s idalib Rust bindings.</li>
+<li>Support for binary targets for any architecture implemented by IDA Pro’s Hex-Rays decompiler.</li>
+<li>Decompilation feature based on the <code>decompile_to_file</code> API exported by <a href="https://github.com/0xdea/haruspex">haruspex</a>.</li>
+<li>Pseudo-code of each function that references a specific string is stored in a separate directory.</li>
+</ul>
+<h3 id="blog-post"><a class="doc-anchor" href="#blog-post">§</a>Blog post</h3>
+<ul>
+<li><a href="https://security.humanativaspa.it/streamlining-vulnerability-research-with-ida-pro-and-rust">https://security.humanativaspa.it/streamlining-vulnerability-research-with-ida-pro-and-rust</a> (<em>coming soon</em>)</li>
+</ul>
+<h3 id="see-also"><a class="doc-anchor" href="#see-also">§</a>See also</h3>
+<ul>
+<li><a href="https://github.com/0xdea/rhabdomancer">https://github.com/0xdea/rhabdomancer</a></li>
+<li><a href="https://github.com/0xdea/haruspex">https://github.com/0xdea/haruspex</a></li>
+<li><a href="https://docs.hex-rays.com/release-notes/9_0#headless-processing-with-idalib">https://docs.hex-rays.com/release-notes/9_0#headless-processing-with-idalib</a></li>
+<li><a href="https://github.com/binarly-io/idalib">https://github.com/binarly-io/idalib</a></li>
+</ul>
+<h3 id="installing"><a class="doc-anchor" href="#installing">§</a>Installing</h3>
+<p>The easiest way to get the latest release is via <a href="https://crates.io/crates/augur">crates.io</a>:</p>
+<ol>
+<li>Download, install, and configure IDA Pro (see <a href="https://hex-rays.com/ida-pro">https://hex-rays.com/ida-pro</a>).</li>
+<li>Download and extract the IDA SDK (see <a href="https://docs.hex-rays.com/developer-guide">https://docs.hex-rays.com/developer-guide</a>).</li>
+<li>Install augur as follows:<div class="example-wrap"><pre class="language-sh"><code>$ export IDASDKDIR=/path/to/idasdk90
+$ export IDADIR=/path/to/ida # if not set, the build script will check common locations
+$ cargo install augur</code></pre></div></li>
+</ol>
+<h3 id="compiling"><a class="doc-anchor" href="#compiling">§</a>Compiling</h3>
+<p>Alternatively, you can build from <a href="https://github.com/0xdea/augur">source</a>:</p>
+<ol>
+<li>Download, install, and configure IDA Pro (see <a href="https://hex-rays.com/ida-pro">https://hex-rays.com/ida-pro</a>).</li>
+<li>Download and extract the IDA SDK (see <a href="https://docs.hex-rays.com/developer-guide">https://docs.hex-rays.com/developer-guide</a>).</li>
+<li>Compile augur as follows:<div class="example-wrap"><pre class="language-sh"><code>$ git clone https://github.com/0xdea/augur
+$ cd augur
+$ export IDASDKDIR=/path/to/idasdk90 # or edit .cargo/config.toml
+$ export IDADIR=/path/to/ida # if not set, the build script will check common locations
+$ cargo build --release</code></pre></div></li>
+</ol>
+<h3 id="usage"><a class="doc-anchor" href="#usage">§</a>Usage</h3>
+<ol>
+<li>Make sure IDA Pro is properly configured with a valid license.</li>
+<li>Run augur as follows:<div class="example-wrap"><pre class="language-sh"><code>$ augur &lt;binary_file&gt;</code></pre></div></li>
+<li>Find the extracted pseudo-code of each decompiled function in the <code>binary_file.str</code> directory,
+organized by string:<div class="example-wrap"><pre class="language-sh"><code>$ vim &lt;binary_file&gt;.str
+$ code &lt;binary_file&gt;.str</code></pre></div></li>
+</ol>
+<h3 id="tested-with"><a class="doc-anchor" href="#tested-with">§</a>Tested with</h3>
+<ul>
+<li>IDA Pro 9.0.241217 on macOS arm64 and Linux x64.</li>
+</ul>
+<p><em>Note: only the <code>unix</code> target family is currently supported, check <a href="https://github.com/binarly-io/idalib">idalib</a>
+documentation if you want to port it yourself to <code>windows</code> (or <code>wasm</code>).</em></p>
+<h3 id="changelog"><a class="doc-anchor" href="#changelog">§</a>Changelog</h3>
+<ul>
+<li><a href="https://github.com/0xdea/augur/blob/master/CHANGELOG.md">https://github.com/0xdea/augur/blob/master/CHANGELOG.md</a></li>
+</ul>
+<h3 id="todo"><a class="doc-anchor" href="#todo">§</a>TODO</h3>
+<ul>
+<li>Implement support for the <code>windows</code> target family.</li>
+<li>Allow users to choose to process string cross-references even if decompiler is unavailable.</li>
+<li>Implement functionality similar to <a href="https://github.com/joxeankoret/idamagicstrings">https://github.com/joxeankoret/idamagicstrings</a>.</li>
+</ul>
+</div></details><h2 id="structs" class="section-header">Structs<a href="#structs" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="struct" href="struct.IDAString.html" title="struct augur::IDAString">IDAString</a><span title="Restricted Visibility">&nbsp;🔒</span> </div><div class="desc docblock-short">IDA string type that holds strings extracted from IDA’s string list</div></li></ul><h2 id="statics" class="section-header">Statics<a href="#statics" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="static" href="static.COUNTER.html" title="static augur::COUNTER">COUNTER</a><span title="Restricted Visibility">&nbsp;🔒</span> </div><div class="desc docblock-short">Number of decompiled functions</div></li><li><div class="item-name"><a class="static" href="static.STRING_MAX_LENGTH.html" title="static augur::STRING_MAX_LENGTH">STRING_<wbr>MAX_<wbr>LENGTH</a><span title="Restricted Visibility">&nbsp;🔒</span> </div><div class="desc docblock-short">Maximum length of the string name</div></li></ul><h2 id="functions" class="section-header">Functions<a href="#functions" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="fn" href="fn.run.html" title="fn augur::run">run</a></div><div class="desc docblock-short">Extract strings and pseudo-code of each function that references them from the binary at
+<code>filepath</code> and save them in <code>filepath.str</code>.</div></li></ul></section></div></main></body></html>
