@@ -96,6 +96,9 @@ use idalib::{Address, IDAError};
 /// Number of decompiled functions
 static COUNTER: AtomicUsize = AtomicUsize::new(0);
 
+/// Maximum length of the string name
+static STRING_MAX_LENGTH: usize = 64;
+
 /// IDA string type that holds strings extracted from IDA's string list
 #[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 struct IDAString(String);
@@ -131,7 +134,12 @@ impl IDAString {
         // If XREF is in a function, dump the function's pseudo-code, otherwise just print its address
         if let Some(f) = idb.function_at(xref.from()) {
             // Generate output directory name
-            let string_name = self.filter_printable_chars().replace(['.', '/', ' '], "_");
+            let string_name: String = self
+                .filter_printable_chars()
+                .replace(['.', '/', ' '], "_")
+                .chars()
+                .take(STRING_MAX_LENGTH)
+                .collect();
             let output_dir = format!("{addr:X}_{string_name}");
 
             // Generate output file name
