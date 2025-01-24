@@ -7,12 +7,12 @@ use walkdir::WalkDir;
 fn main() -> anyhow::Result<()> {
     // Target binary path
     const FILENAME: &str = "./tests/bin/ls";
-    // Expected number of decompiled functions
-    const N_DECOMP: usize = 27;
+    // Expected number of string usages in functions
+    const N_USAGES: usize = 27;
     // Expected number of subdirectories
     const N_SUBDIRS: usize = 26;
     // Expected number of files in the output directory and all subdirectories
-    const N_FILES: usize = N_DECOMP + N_SUBDIRS + 1;
+    const N_FILES: usize = N_USAGES + N_SUBDIRS + 1;
 
     // Remove IDB file if it exists
     let idb_path = &format!("{FILENAME}.i64");
@@ -28,11 +28,11 @@ fn main() -> anyhow::Result<()> {
         fs::remove_dir_all(&dirpath)?;
     }
 
-    // Run augur and check the number of decompiled functions
+    // Run augur and check the number of string usages in functions
     let n_decomp = augur::run(Path::new(FILENAME))?;
     println!();
-    print!("[*] Checking number of decompiled functions... ");
-    assert_eq!(n_decomp, N_DECOMP);
+    print!("[*] Checking number of string usages in functions... ");
+    assert_eq!(n_decomp, N_USAGES);
     println!("Ok.");
 
     // Check the number of created subdirectories in the output directory
