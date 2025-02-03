@@ -1,6 +1,6 @@
 [package]
 name = "augur"
-version = "0.1.1-alpha"
+version = "0.1.1"
 authors = ["Marco Ivaldi <raptor@0xdeadbeef.info>"]
 edition = "2021"
 description = "Vulnerability research assistant that extracts strings and related pseudo-code from a binary file."
