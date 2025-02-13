@@ -87,6 +87,7 @@ use std::ops::Deref;
 use std::path::Path;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
+use anyhow::Context;
 use haruspex::{decompile_to_file, HaruspexError};
 use idalib::decompiler::HexRaysErrorCode;
 use idalib::idb::IDB;
@@ -143,7 +144,10 @@ impl IDAString {
             let output_dir = format!("{addr:X}_{string_name}");
 
             // Generate output file name
-            let func_name = f.name().unwrap().replace(['.', '/'], "_");
+            let func_name = f
+                .name()
+                .unwrap_or_else(|| "<no name>".into())
+                .replace(['.', '/'], "_");
             let output_file = format!("{func_name}@{:X}", f.start_address());
 
             // Generate output path
@@ -219,8 +223,15 @@ pub fn run(filepath: &Path) -> anyhow::Result<usize> {
     println!("[*] Finding cross-references to strings...");
     for i in 0..idb.strings().len() {
         // Extract string with its address
-        let string: IDAString = idb.strings().get_by_index(i).unwrap().into();
-        let addr = idb.strings().get_address_by_index(i).unwrap();
+        let string: IDAString = idb
+            .strings()
+            .get_by_index(i)
+            .context("cannot get string content")?
+            .into();
+        let addr = idb
+            .strings()
+            .get_address_by_index(i)
+            .context("cannot get string address")?;
         println!("\n{addr:#X} {:?} ", string.as_ref());
 
         // Traverse XREFs to string and dump related pseudo-code to output file
