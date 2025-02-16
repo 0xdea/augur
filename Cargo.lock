@@ -49,7 +49,7 @@ dependencies = [
 
 [[package]]
 name = "augur"
-version = "0.1.2"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "haruspex",
@@ -195,9 +195,9 @@ checksum = "8f68f53c83ab957f72c32642f3868eec03eb974d1fb82e453128456482613d36"
 
 [[package]]
 name = "cc"
-version = "1.2.13"
+version = "1.2.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c7777341816418c02e033934a09f20dc0ccaf65a5201ef8a450ae0105a573fda"
+checksum = "0c3d1b2e905a3a7b00a6141adb0e4c0bb941d11caf55349d863942a1cc44e3c9"
 dependencies = [
  "shlex",
 ]
@@ -396,9 +396,9 @@ checksum = "a8d1add55171497b4705a648c6b583acafb01d58050a51727785f0b2c8e0a2b2"
 
 [[package]]
 name = "haruspex"
-version = "0.3.1"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ec923442bc8796dcee5a2fe691dd102e2ed8295578380bb5a016d7b44436c316"
+checksum = "13de065788f2972ef6f0769b426c50e8fdb26c4993f1c5c80f41b309d37329ab"
 dependencies = [
  "anyhow",
  "idalib",

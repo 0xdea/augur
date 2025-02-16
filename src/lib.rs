@@ -90,6 +90,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use anyhow::Context;
 use haruspex::{decompile_to_file, HaruspexError};
 use idalib::decompiler::HexRaysErrorCode;
+use idalib::func::FunctionFlags;
 use idalib::idb::IDB;
 use idalib::xref::{XRef, XRefQuery};
 use idalib::{Address, IDAError};
@@ -134,6 +135,11 @@ impl IDAString {
     ) -> Result<(), HaruspexError> {
         // If XREF is in a function, dump the function's pseudo-code, otherwise just print its address
         if let Some(f) = idb.function_at(xref.from()) {
+            // Skip function if it has the `thunk` attribute
+            if f.flags().contains(FunctionFlags::THUNK) {
+                return Ok(());
+            }
+
             // Generate output directory name
             let string_name: String = self
                 .filter_printable_chars()
