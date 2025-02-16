@@ -268,7 +268,13 @@
 <a href="#267" id="267">267</a>
 <a href="#268" id="268">268</a>
 <a href="#269" id="269">269</a>
-<a href="#270" id="270">270</a></pre></div><pre class="rust"><code><span class="doccomment">//!
+<a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a></pre></div><pre class="rust"><code><span class="doccomment">//!
 //! augur - Tool to extract strings and related pseudo-code
 //! Copyright (c) 2024-2025 Marco Ivaldi &lt;raptor@0xdeadbeef.info&gt;
 //!
@@ -360,6 +366,7 @@
 <span class="kw">use </span>anyhow::Context;
 <span class="kw">use </span>haruspex::{decompile_to_file, HaruspexError};
 <span class="kw">use </span>idalib::decompiler::HexRaysErrorCode;
+<span class="kw">use </span>idalib::func::FunctionFlags;
 <span class="kw">use </span>idalib::idb::IDB;
 <span class="kw">use </span>idalib::xref::{XRef, XRefQuery};
 <span class="kw">use </span>idalib::{Address, IDAError};
@@ -404,6 +411,11 @@
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), HaruspexError&gt; {
         <span class="comment">// If XREF is in a function, dump the function's pseudo-code, otherwise just print its address
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(f) = idb.function_at(xref.from()) {
+            <span class="comment">// Skip function if it has the `thunk` attribute
+            </span><span class="kw">if </span>f.flags().contains(FunctionFlags::THUNK) {
+                <span class="kw">return </span><span class="prelude-val">Ok</span>(());
+            }
+
             <span class="comment">// Generate output directory name
             </span><span class="kw">let </span>string_name: String = <span class="self">self
                 </span>.filter_printable_chars()
