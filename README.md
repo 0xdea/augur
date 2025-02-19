@@ -90,5 +90,6 @@ documentation if you want to port it to `windows` yourself.*
 ## TODO
 
 * Implement support for the `windows` target family.
+* Integrate with [oneiromancer](https://github.com/0xdea/oneiromancer).
 * Allow users to choose to process string cross-references even if decompiler is unavailable.
 * Implement functionality similar to <https://github.com/joxeankoret/idamagicstrings>.
