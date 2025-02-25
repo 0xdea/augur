@@ -199,9 +199,10 @@ pub fn run(filepath: &Path) -> anyhow::Result<usize> {
     // Open target binary and run auto-analysis
     println!("[*] Trying to analyze binary file {filepath:?}");
     if !filepath.is_file() {
-        return Err(anyhow::anyhow!("invalid file path"));
+        return Err(anyhow::anyhow!("Invalid file path"));
     }
-    let idb = IDB::open(filepath)?;
+    let idb = IDB::open(filepath)
+        .with_context(|| format!("Failed to analyze binary file {filepath:?}"))?;
     println!("[+] Successfully analyzed binary file");
     println!();
 
@@ -213,16 +214,17 @@ pub fn run(filepath: &Path) -> anyhow::Result<usize> {
 
     // Check if Hex-Rays decompiler is available
     if !idb.decompiler_available() {
-        return Err(anyhow::anyhow!("decompiler is not available"));
+        return Err(anyhow::anyhow!("Decompiler is not available"));
     }
 
     // Create a new output directory, returning an error if it already exists and it's not empty
     let dirpath = filepath.with_extension("str");
     println!("[*] Preparing output directory {dirpath:?}");
     if dirpath.exists() {
-        fs::remove_dir(&dirpath).map_err(|_| anyhow::anyhow!("output directory already exists"))?;
+        fs::remove_dir(&dirpath).map_err(|_| anyhow::anyhow!("Output directory already exists"))?;
     }
-    fs::create_dir_all(&dirpath)?;
+    fs::create_dir_all(&dirpath)
+        .with_context(|| format!("Failed to create directory {dirpath:?}"))?;
     println!("[+] Output directory is ready");
 
     // Locate XREFs to strings in target binary and dump related pseudo-code
@@ -233,12 +235,12 @@ pub fn run(filepath: &Path) -> anyhow::Result<usize> {
         let string: IDAString = idb
             .strings()
             .get_by_index(i)
-            .context("cannot get string content")?
+            .context("Failed to get string content")?
             .into();
         let addr = idb
             .strings()
             .get_address_by_index(i)
-            .context("cannot get string address")?;
+            .context("Failed to get string address")?;
         println!("\n{addr:#X} {:?} ", string.as_ref());
 
         // Traverse XREFs to string and dump related pseudo-code to output file
@@ -264,9 +266,10 @@ pub fn run(filepath: &Path) -> anyhow::Result<usize> {
 
     // Remove output directory and return an error in case no functions were decompiled
     if COUNTER.load(Ordering::Relaxed) == 0 {
-        fs::remove_dir_all(&dirpath)?;
+        fs::remove_dir_all(&dirpath)
+            .with_context(|| format!("Failed to remove directory {dirpath:?}"))?;
         return Err(anyhow::anyhow!(
-            "no functions were decompiled, check your input file"
+            "No functions were decompiled, check your input file"
         ));
     }
 

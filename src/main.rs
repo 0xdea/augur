@@ -34,7 +34,7 @@ fn main() {
     match augur::run(Path::new(filename)) {
         Ok(_) => (),
         Err(err) => {
-            eprintln!("[!] Error: {err}");
+            eprintln!("[!] Error: {err:#}");
             process::exit(1);
         }
     }
