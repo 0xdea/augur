@@ -32,17 +32,25 @@ fn main() -> anyhow::Result<()> {
     let n_decomp = augur::run(Path::new(FILENAME))?;
     println!();
     print!("[*] Checking number of string usages in functions... ");
-    assert_eq!(n_decomp, N_USAGES);
+    assert_eq!(n_decomp, N_USAGES, "wrong number of string usages");
     println!("Ok.");
 
     // Check the number of created subdirectories in the output directory
     print!("[*] Checking number of subdirectories in output directory... ");
-    assert_eq!(dirpath.read_dir()?.count(), N_SUBDIRS);
+    assert_eq!(
+        dirpath.read_dir()?.count(),
+        N_SUBDIRS,
+        "wrong number of subdirectories"
+    );
     println!("Ok.");
 
     // Check the number of created files in the output directory and all subdirectories
     print!("[*] Checking number of files in output directory and all subdirectories... ");
-    assert_eq!(WalkDir::new(&dirpath).into_iter().count(), N_FILES);
+    assert_eq!(
+        WalkDir::new(&dirpath).into_iter().count(),
+        N_FILES,
+        "wrong number of files"
+    );
     println!("Ok.");
 
     // Remove output directory at the end
