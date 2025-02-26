@@ -89,7 +89,7 @@ use std::path::Path;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use anyhow::Context;
-use haruspex::{decompile_to_file, HaruspexError};
+use haruspex::{HaruspexError, decompile_to_file};
 use idalib::decompiler::HexRaysErrorCode;
 use idalib::func::FunctionFlags;
 use idalib::idb::IDB;
