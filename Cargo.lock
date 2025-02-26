@@ -49,7 +49,7 @@ dependencies = [
 
 [[package]]
 name = "augur"
-version = "0.2.2"
+version = "0.2.3-alpha"
 dependencies = [
  "anyhow",
  "haruspex",
