@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 * Follow idalib major version from now on.
-* Switch to idalib v0.5.1 and update other dependencies.
+* Switch to idalib v0.5.1, haruspex v0.5.0, and update other dependencies.
 * Update documentation and add a compatibility matrix.
 
 ## [0.2.3] - 2025-02-28
