@@ -62,11 +62,12 @@
 //!     $ code <binary_file>.str
 //!     ```
 //!
-//! ## Tested with
-//! * IDA Pro 9.0.241217 on macOS arm64 and Linux x64.
+//! ## Compatibility
+//! * IDA Pro 9.0.241217 - Latest compatible: v0.2.3.
+//! * IDA Pro 9.1.250226 - Latest compatible: current version.
 //!
 //! *Note: only the `unix` target family is currently supported, check [idalib](https://github.com/binarly-io/idalib)
-//! documentation if you want to port it to `windows` yourself.*
+//! documentation if you're interested in a `windows` port.*
 //!
 //! ## Changelog
 //! * <https://github.com/0xdea/augur/blob/master/CHANGELOG.md>
