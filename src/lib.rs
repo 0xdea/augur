@@ -36,6 +36,9 @@
 //!     $ cargo install augur
 //!     ```
 //!
+//! *Note: in addition to the latest IDA SDK and IDA Pro itself, a recent version of LLVM/Clang is required
+//! (see [idalib](https://github.com/binarly-io/idalib) documentation).*
+//!
 //! ## Compiling
 //! Alternatively, you can build from [source](https://github.com/0xdea/augur):
 //! 1. Download, install, and configure IDA Pro (see <https://hex-rays.com/ida-pro>).
@@ -48,6 +51,9 @@
 //!     $ export IDADIR=/path/to/ida # if not set, the build script will check common locations
 //!     $ cargo build --release
 //!     ```
+//!
+//! *Note: in addition to the latest IDA SDK and IDA Pro itself, a recent version of LLVM/Clang is required
+//! (see [idalib](https://github.com/binarly-io/idalib) documentation).*
 //!
 //! ## Usage
 //! 1. Make sure IDA Pro is properly configured with a valid license.
