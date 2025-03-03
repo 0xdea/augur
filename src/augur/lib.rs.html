@@ -278,7 +278,11 @@
 <a href="#277" id="277">277</a>
 <a href="#278" id="278">278</a>
 <a href="#279" id="279">279</a>
-<a href="#280" id="280">280</a></pre></div><pre class="rust"><code><span class="doccomment">//!
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a></pre></div><pre class="rust"><code><span class="doccomment">//!
 //! augur - Tool to extract strings and related pseudo-code
 //! Copyright (c) 2024-2025 Marco Ivaldi &lt;raptor@0xdeadbeef.info&gt;
 //!
@@ -311,10 +315,13 @@
 //! 2. Download and extract the IDA SDK (see &lt;https://docs.hex-rays.com/developer-guide&gt;).
 //! 3. Install augur as follows:
 //!     ```sh
-//!     $ export IDASDKDIR=/path/to/idasdk90
+//!     $ export IDASDKDIR=/path/to/idasdk
 //!     $ export IDADIR=/path/to/ida # if not set, the build script will check common locations
 //!     $ cargo install augur
 //!     ```
+//!
+//! *Note: in addition to the latest IDA SDK and IDA Pro itself, a recent version of LLVM/Clang is required
+//! (see [idalib](https://github.com/binarly-io/idalib) documentation).*
 //!
 //! ## Compiling
 //! Alternatively, you can build from [source](https://github.com/0xdea/augur):
@@ -324,10 +331,13 @@
 //!     ```sh
 //!     $ git clone https://github.com/0xdea/augur
 //!     $ cd augur
-//!     $ export IDASDKDIR=/path/to/idasdk90 # or edit .cargo/config.toml
+//!     $ export IDASDKDIR=/path/to/idasdk # or edit .cargo/config.toml
 //!     $ export IDADIR=/path/to/ida # if not set, the build script will check common locations
 //!     $ cargo build --release
 //!     ```
+//!
+//! *Note: in addition to the latest IDA SDK and IDA Pro itself, a recent version of LLVM/Clang is required
+//! (see [idalib](https://github.com/binarly-io/idalib) documentation).*
 //!
 //! ## Usage
 //! 1. Make sure IDA Pro is properly configured with a valid license.
@@ -342,11 +352,12 @@
 //!     $ code &lt;binary_file&gt;.str
 //!     ```
 //!
-//! ## Tested with
-//! * IDA Pro 9.0.241217 on macOS arm64 and Linux x64.
+//! ## Compatibility
+//! * IDA Pro 9.0.241217 - Latest compatible: v0.2.3.
+//! * IDA Pro 9.1.250226 - Latest compatible: current version.
 //!
 //! *Note: only the `unix` target family is currently supported, check [idalib](https://github.com/binarly-io/idalib)
-//! documentation if you want to port it to `windows` yourself.*
+//! documentation if you're interested in a `windows` port.*
 //!
 //! ## Changelog
 //! * &lt;https://github.com/0xdea/augur/blob/master/CHANGELOG.md&gt;
@@ -478,9 +489,6 @@
 </span><span class="kw">pub fn </span>run(filepath: <span class="kw-2">&amp;</span>Path) -&gt; anyhow::Result&lt;usize&gt; {
     <span class="comment">// Open target binary and run auto-analysis
     </span><span class="macro">println!</span>(<span class="string">"[*] Trying to analyze binary file {filepath:?}"</span>);
-    <span class="kw">if </span>!filepath.is_file() {
-        <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow::anyhow!</span>(<span class="string">"Invalid file path"</span>));
-    }
     <span class="kw">let </span>idb = IDB::open(filepath)
         .with_context(|| <span class="macro">format!</span>(<span class="string">"Failed to analyze binary file {filepath:?}"</span>))<span class="question-mark">?</span>;
     <span class="macro">println!</span>(<span class="string">"[+] Successfully analyzed binary file"</span>);
