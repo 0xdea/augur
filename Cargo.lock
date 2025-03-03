@@ -49,12 +49,12 @@ dependencies = [
 
 [[package]]
 name = "augur"
-version = "0.5.0-alpha"
+version = "0.5.0"
 dependencies = [
  "anyhow",
  "haruspex",
- "idalib 0.5.1+9.1.250226",
- "idalib-build 0.5.1+9.1.250226",
+ "idalib",
+ "idalib-build",
  "walkdir",
 ]
 
@@ -377,13 +377,13 @@ checksum = "a8d1add55171497b4705a648c6b583acafb01d58050a51727785f0b2c8e0a2b2"
 
 [[package]]
 name = "haruspex"
-version = "0.4.2"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3e7dc17810ed2ef473c5999959715f5fc9a8a92e13d6e3712f65b83709736349"
+checksum = "d21a9e223ba2de3a72aa6a6a1252b825632293e34121200559279bdf773cb6f6"
 dependencies = [
  "anyhow",
- "idalib 0.4.1+9.0.241217",
- "idalib-build 0.4.1+9.0.241217",
+ "idalib",
+ "idalib-build",
  "thiserror 2.0.11",
 ]
 
@@ -410,21 +410,6 @@ checksum = "9a3a5bfb195931eeb336b2a7b4d761daec841b97f947d34394601737a7bba5e4"
 
 [[package]]
 name = "idalib"
-version = "0.4.1+9.0.241217"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0174993ceb50ac00e38bdfab11fc62f28320043b6169e52ba5d05f33d0374f13"
-dependencies = [
- "anyhow",
- "autocxx",
- "bitflags",
- "cxx",
- "idalib-build 0.4.1+9.0.241217",
- "idalib-sys 0.4.1+9.0.241217",
- "thiserror 1.0.69",
-]
-
-[[package]]
-name = "idalib"
 version = "0.5.1+9.1.250226"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e8ff990820583ea22965d6cde2ac3597e7514fee0bb1702eebb6ba04fc568387"
@@ -433,18 +418,9 @@ dependencies = [
  "autocxx",
  "bitflags",
  "cxx",
- "idalib-build 0.5.1+9.1.250226",
- "idalib-sys 0.5.1+9.1.250226",
+ "idalib-build",
+ "idalib-sys",
  "thiserror 1.0.69",
-]
-
-[[package]]
-name = "idalib-build"
-version = "0.4.1+9.0.241217"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6c2bd7f8393358c2d2b048fd06e924a32bd7a3177f7cdcc506170685656480a4"
-dependencies = [
- "anyhow",
 ]
 
 [[package]]
@@ -454,25 +430,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39c9f83ceee08085fe4a4bb106310d0e189cc526b02ad9b2aa1574f1e5d80c93"
 dependencies = [
  "anyhow",
-]
-
-[[package]]
-name = "idalib-sys"
-version = "0.4.1+9.0.241217"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "de50241b93c7a64c7a73864a96f07f27a506318c06857a24470a7566681782d3"
-dependencies = [
- "anyhow",
- "autocxx",
- "autocxx-bindgen",
- "autocxx-build",
- "bitflags",
- "cxx",
- "cxx-build",
- "libc",
- "objc",
- "thiserror 1.0.69",
- "windows-sys",
 ]
 
 [[package]]
