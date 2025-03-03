@@ -45,7 +45,7 @@
 //! 2. Download and extract the IDA SDK (see <https://docs.hex-rays.com/developer-guide>).
 //! 3. Compile augur as follows:
 //!     ```sh
-//!     $ git clone https://github.com/0xdea/augur
+//!     $ git clone --depth 1 https://github.com/0xdea/augur
 //!     $ cd augur
 //!     $ export IDASDKDIR=/path/to/idasdk # or edit .cargo/config.toml
 //!     $ export IDADIR=/path/to/ida # if not set, the build script will check common locations
