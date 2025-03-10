@@ -282,7 +282,9 @@
 <a href="#281" id="281">281</a>
 <a href="#282" id="282">282</a>
 <a href="#283" id="283">283</a>
-<a href="#284" id="284">284</a></pre></div><pre class="rust"><code><span class="doccomment">//!
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a></pre></div><pre class="rust"><code><span class="doccomment">//!
 //! augur - Tool to extract strings and related pseudo-code
 //! Copyright (c) 2024-2025 Marco Ivaldi &lt;raptor@0xdeadbeef.info&gt;
 //!
@@ -329,7 +331,7 @@
 //! 2. Download and extract the IDA SDK (see &lt;https://docs.hex-rays.com/developer-guide&gt;).
 //! 3. Compile augur as follows:
 //!     ```sh
-//!     $ git clone https://github.com/0xdea/augur
+//!     $ git clone --depth 1 https://github.com/0xdea/augur
 //!     $ cd augur
 //!     $ export IDASDKDIR=/path/to/idasdk # or edit .cargo/config.toml
 //!     $ export IDADIR=/path/to/ida # if not set, the build script will check common locations
@@ -485,7 +487,9 @@
 <span class="doccomment">/// Extract strings and pseudo-code of each function that references them from the binary at
 /// `filepath` and save them in `filepath.str`.
 ///
-/// Return how many functions were decompiled, or an error in case something goes wrong.
+/// ## Errors
+///
+/// Returns how many functions were decompiled, or a generic error in case something goes wrong.
 </span><span class="kw">pub fn </span>run(filepath: <span class="kw-2">&amp;</span>Path) -&gt; anyhow::Result&lt;usize&gt; {
     <span class="comment">// Open target binary and run auto-analysis
     </span><span class="macro">println!</span>(<span class="string">"[*] Trying to analyze binary file {filepath:?}"</span>);
