@@ -42,11 +42,19 @@ The easiest way to get the latest release is via [crates.io](https://crates.io/c
 1. Download, install, and configure IDA Pro (see <https://hex-rays.com/ida-pro>).
 2. Download and extract the IDA SDK (see <https://docs.hex-rays.com/developer-guide>).
 3. Install LLVM/Clang (see <https://rust-lang.github.io/rust-bindgen/requirements.html>).
-4. Install augur as follows:
+4. On Linux/macOS, install as follows:
     ```sh
-    $ export IDASDKDIR=/path/to/idasdk
-    $ export IDADIR=/path/to/ida # if not set, the build script will check common locations
-    $ cargo install augur
+    export IDASDKDIR=/path/to/idasdk
+    export IDADIR=/path/to/ida # if not set, the build script will check common locations
+    cargo install augur
+    ```
+   On Windows, instead, use the following commands:
+    ```powershell
+    $env:LIBCLANG_PATH="\path\to\clang+llvm\bin"
+    $env:PATH="\path\to\ida;$env:PATH"
+    $env:IDASDKDIR="\path\to\idasdk"
+    $env:IDADIR="\path\to\ida" # if not set, the build script will check common locations
+    cargo build augur
     ```
 
 ## Compiling
@@ -56,26 +64,36 @@ Alternatively, you can build from [source](https://github.com/0xdea/augur):
 1. Download, install, and configure IDA Pro (see <https://hex-rays.com/ida-pro>).
 2. Download and extract the IDA SDK (see <https://docs.hex-rays.com/developer-guide>).
 3. Install LLVM/Clang (see <https://rust-lang.github.io/rust-bindgen/requirements.html>).
-4. Compile augur as follows:
+4. On Linux/macOS, compile as follows:
     ```sh
-    $ git clone --depth 1 https://github.com/0xdea/augur
-    $ cd augur
-    $ export IDASDKDIR=/path/to/idasdk # or edit .cargo/config.toml
-    $ export IDADIR=/path/to/ida # if not set, the build script will check common locations
-    $ cargo build --release
+    git clone --depth 1 https://github.com/0xdea/augur
+    cd augur
+    export IDASDKDIR=/path/to/idasdk # or edit .cargo/config.toml
+    export IDADIR=/path/to/ida # if not set, the build script will check common locations
+    cargo build --release
+    ```
+   On Windows, instead, use the following commands:
+    ```powershell
+    git clone --depth 1 https://github.com/0xdea/augur
+    cd augur
+    $env:LIBCLANG_PATH="\path\to\clang+llvm\bin"
+    $env:PATH="\path\to\ida;$env:PATH"
+    $env:IDASDKDIR="\path\to\idasdk"
+    $env:IDADIR="\path\to\ida" # if not set, the build script will check common locations
+    cargo build --release
     ```
 
 ## Usage
 
 1. Make sure IDA Pro is properly configured with a valid license.
-2. Run augur as follows:
+2. Run as follows:
     ```sh
-    $ augur <binary_file>
+    augur <binary_file>
     ```
 3. Find the extracted pseudo-code of each decompiled function in the `binary_file.str` directory, organized by string:
     ```sh
-    $ vim <binary_file>.str
-    $ code <binary_file>.str
+    vim <binary_file>.str
+    code <binary_file>.str
     ```
 
 ## Compatibility
@@ -83,8 +101,7 @@ Alternatively, you can build from [source](https://github.com/0xdea/augur):
 * IDA Pro 9.0.241217 - Latest compatible: v0.2.3.
 * IDA Pro 9.1.250226 - Latest compatible: current version.
 
-*Note: only the `unix` target family is currently supported, check [idalib](https://github.com/binarly-io/idalib)
-documentation if you're interested in a `windows` port.*
+*Note: check [idalib](https://github.com/binarly-io/idalib) documentation for additional information.*
 
 ## Changelog
 
@@ -92,7 +109,6 @@ documentation if you're interested in a `windows` port.*
 
 ## TODO
 
-* Implement support for the `windows` target family.
 * Integrate with [oneiromancer](https://github.com/0xdea/oneiromancer).
 * Allow users to choose to process string cross-references even if decompiler is unavailable.
 * Implement functionality similar to <https://github.com/joxeankoret/idamagicstrings>.
