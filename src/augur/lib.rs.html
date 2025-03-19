@@ -284,7 +284,17 @@
 <a href="#283" id="283">283</a>
 <a href="#284" id="284">284</a>
 <a href="#285" id="285">285</a>
-<a href="#286" id="286">286</a></pre></div><pre class="rust"><code><span class="doccomment">//!
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a></pre></div><pre class="rust"><code><span class="doccomment">//!
 //! augur - Tool to extract strings and related pseudo-code
 //! Copyright (c) 2024-2025 Marco Ivaldi &lt;raptor@0xdeadbeef.info&gt;
 //!
@@ -315,43 +325,57 @@
 //! The easiest way to get the latest release is via [crates.io](https://crates.io/crates/augur):
 //! 1. Download, install, and configure IDA Pro (see &lt;https://hex-rays.com/ida-pro&gt;).
 //! 2. Download and extract the IDA SDK (see &lt;https://docs.hex-rays.com/developer-guide&gt;).
-//! 3. Install augur as follows:
+//! 3. Install LLVM/Clang (see &lt;https://rust-lang.github.io/rust-bindgen/requirements.html&gt;).
+//! 4. On Linux/macOS, install as follows:
 //!     ```sh
-//!     $ export IDASDKDIR=/path/to/idasdk
-//!     $ export IDADIR=/path/to/ida # if not set, the build script will check common locations
-//!     $ cargo install augur
+//!     export IDASDKDIR=/path/to/idasdk
+//!     export IDADIR=/path/to/ida # if not set, the build script will check common locations
+//!     cargo install augur
 //!     ```
-//!
-//! *Note: in addition to the latest IDA SDK and IDA Pro itself, a recent version of LLVM/Clang is required
-//! (see [idalib](https://github.com/binarly-io/idalib) documentation).*
+//!    On Windows, instead, use the following commands:
+//!     ```powershell
+//!     $env:LIBCLANG_PATH="\path\to\clang+llvm\bin"
+//!     $env:PATH="\path\to\ida;$env:PATH"
+//!     $env:IDASDKDIR="\path\to\idasdk"
+//!     $env:IDADIR="\path\to\ida" # if not set, the build script will check common locations
+//!     cargo build augur
+//!     ```
 //!
 //! ## Compiling
 //! Alternatively, you can build from [source](https://github.com/0xdea/augur):
 //! 1. Download, install, and configure IDA Pro (see &lt;https://hex-rays.com/ida-pro&gt;).
 //! 2. Download and extract the IDA SDK (see &lt;https://docs.hex-rays.com/developer-guide&gt;).
-//! 3. Compile augur as follows:
+//! 3. Install LLVM/Clang (see &lt;https://rust-lang.github.io/rust-bindgen/requirements.html&gt;).
+//! 4. On Linux/macOS, compile as follows:
 //!     ```sh
-//!     $ git clone --depth 1 https://github.com/0xdea/augur
-//!     $ cd augur
-//!     $ export IDASDKDIR=/path/to/idasdk # or edit .cargo/config.toml
-//!     $ export IDADIR=/path/to/ida # if not set, the build script will check common locations
-//!     $ cargo build --release
+//!     git clone --depth 1 https://github.com/0xdea/augur
+//!     cd augur
+//!     export IDASDKDIR=/path/to/idasdk # or edit .cargo/config.toml
+//!     export IDADIR=/path/to/ida # if not set, the build script will check common locations
+//!     cargo build --release
 //!     ```
-//!
-//! *Note: in addition to the latest IDA SDK and IDA Pro itself, a recent version of LLVM/Clang is required
-//! (see [idalib](https://github.com/binarly-io/idalib) documentation).*
+//!    On Windows, instead, use the following commands:
+//!     ```powershell
+//!     git clone --depth 1 https://github.com/0xdea/augur
+//!     cd augur
+//!     $env:LIBCLANG_PATH="\path\to\clang+llvm\bin"
+//!     $env:PATH="\path\to\ida;$env:PATH"
+//!     $env:IDASDKDIR="\path\to\idasdk"
+//!     $env:IDADIR="\path\to\ida" # if not set, the build script will check common locations
+//!     cargo build --release
+//!     ```
 //!
 //! ## Usage
 //! 1. Make sure IDA Pro is properly configured with a valid license.
-//! 2. Run augur as follows:
+//! 2. Run as follows:
 //!     ```sh
-//!     $ augur &lt;binary_file&gt;
+//!     augur &lt;binary_file&gt;
 //!     ```
 //! 3. Find the extracted pseudo-code of each decompiled function in the `binary_file.str` directory,
 //!    organized by string:
 //!     ```sh
-//!     $ vim &lt;binary_file&gt;.str
-//!     $ code &lt;binary_file&gt;.str
+//!     vim &lt;binary_file&gt;.str
+//!     code &lt;binary_file&gt;.str
 //!     ```
 //!
 //! ## Compatibility
@@ -365,7 +389,6 @@
 //! * &lt;https://github.com/0xdea/augur/blob/master/CHANGELOG.md&gt;
 //!
 //! ## TODO
-//! * Implement support for the `windows` target family.
 //! * Integrate with [oneiromancer](https://github.com/0xdea/oneiromancer).
 //! * Allow users to choose to process string cross-references even if decompiler is unavailable.
 //! * Implement functionality similar to &lt;https://github.com/joxeankoret/idamagicstrings&gt;.
@@ -373,10 +396,7 @@
 
 </span><span class="attr">#![doc(html_logo_url = <span class="string">"https://raw.githubusercontent.com/0xdea/augur/master/.img/logo.png"</span>)]
 
-#[cfg(not(unix))]
-</span><span class="macro">compile_error!</span>(<span class="string">"only the `unix` target family is currently supported"</span>);
-
-<span class="kw">use </span>std::fs;
+</span><span class="kw">use </span>std::fs;
 <span class="kw">use </span>std::ops::Deref;
 <span class="kw">use </span>std::path::Path;
 <span class="kw">use </span>std::sync::atomic::{AtomicUsize, Ordering};
