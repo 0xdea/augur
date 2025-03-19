@@ -116,8 +116,14 @@ use idalib::{Address, IDAError};
 /// Number of decompiled functions
 static COUNTER: AtomicUsize = AtomicUsize::new(0);
 
-/// Maximum length of the string name
-static STRING_MAX_LENGTH: usize = 64;
+/// Reserved characters in filenames
+#[cfg(unix)]
+static RESERVED_CHARS: &[char] = &['.', '/'];
+#[cfg(windows)]
+static RESERVED_CHARS: &[char] = &['.', '/', '<', '>', ':', '"', '\\', '|', '?', '*'];
+
+/// Maximum length of filenames
+static MAX_FILENAME_LEN: usize = 64;
 
 /// IDA string type that holds strings extracted from IDA's string list
 #[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -159,20 +165,27 @@ impl IDAString {
             }
 
             // Generate output directory name
-            let string_name: String = self
-                .filter_printable_chars()
-                .replace(['.', '/', ' '], "_")
-                .chars()
-                .take(STRING_MAX_LENGTH)
-                .collect();
-            let output_dir = format!("{addr:X}_{string_name}");
+            let string_name = self.filter_printable_chars();
+            let output_dir = format!(
+                "{addr:X}_{}",
+                string_name
+                    .replace(RESERVED_CHARS, "_")
+                    .chars()
+                    .take(MAX_FILENAME_LEN)
+                    .collect::<String>()
+            );
 
             // Generate output file name
-            let func_name = f
-                .name()
-                .unwrap_or_else(|| "<no name>".into())
-                .replace(['.', '/'], "_");
-            let output_file = format!("{func_name}@{:X}", f.start_address());
+            let func_name = f.name().unwrap_or_else(|| "<no name>".into());
+            let output_file = format!(
+                "{}@{:X}",
+                func_name
+                    .replace(RESERVED_CHARS, "_")
+                    .chars()
+                    .take(MAX_FILENAME_LEN)
+                    .collect::<String>(),
+                f.start_address()
+            );
 
             // Generate output path
             let dirpath_sub = dirpath.join(&output_dir);
