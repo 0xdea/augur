@@ -294,7 +294,20 @@
 <a href="#293" id="293">293</a>
 <a href="#294" id="294">294</a>
 <a href="#295" id="295">295</a>
-<a href="#296" id="296">296</a></pre></div><pre class="rust"><code><span class="doccomment">//!
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
+<a href="#304" id="304">304</a>
+<a href="#305" id="305">305</a>
+<a href="#306" id="306">306</a>
+<a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a></pre></div><pre class="rust"><code><span class="doccomment">//!
 //! augur - Tool to extract strings and related pseudo-code
 //! Copyright (c) 2024-2025 Marco Ivaldi &lt;raptor@0xdeadbeef.info&gt;
 //!
@@ -412,8 +425,14 @@
 <span class="doccomment">/// Number of decompiled functions
 </span><span class="kw">static </span>COUNTER: AtomicUsize = AtomicUsize::new(<span class="number">0</span>);
 
-<span class="doccomment">/// Maximum length of the string name
-</span><span class="kw">static </span>STRING_MAX_LENGTH: usize = <span class="number">64</span>;
+<span class="doccomment">/// Reserved characters in filenames
+</span><span class="attr">#[cfg(unix)]
+</span><span class="kw">static </span>RESERVED_CHARS: <span class="kw-2">&amp;</span>[char] = <span class="kw-2">&amp;</span>[<span class="string">'.'</span>, <span class="string">'/'</span>];
+<span class="attr">#[cfg(windows)]
+</span><span class="kw">static </span>RESERVED_CHARS: <span class="kw-2">&amp;</span>[char] = <span class="kw-2">&amp;</span>[<span class="string">'.'</span>, <span class="string">'/'</span>, <span class="string">'&lt;'</span>, <span class="string">'&gt;'</span>, <span class="string">':'</span>, <span class="string">'"'</span>, <span class="string">'\\'</span>, <span class="string">'|'</span>, <span class="string">'?'</span>, <span class="string">'*'</span>];
+
+<span class="doccomment">/// Maximum length of filenames
+</span><span class="kw">static </span>MAX_FILENAME_LEN: usize = <span class="number">64</span>;
 
 <span class="doccomment">/// IDA string type that holds strings extracted from IDA's string list
 </span><span class="attr">#[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -455,20 +474,27 @@
             }
 
             <span class="comment">// Generate output directory name
-            </span><span class="kw">let </span>string_name: String = <span class="self">self
-                </span>.filter_printable_chars()
-                .replace([<span class="string">'.'</span>, <span class="string">'/'</span>, <span class="string">' '</span>], <span class="string">"_"</span>)
-                .chars()
-                .take(STRING_MAX_LENGTH)
-                .collect();
-            <span class="kw">let </span>output_dir = <span class="macro">format!</span>(<span class="string">"{addr:X}_{string_name}"</span>);
+            </span><span class="kw">let </span>string_name = <span class="self">self</span>.filter_printable_chars();
+            <span class="kw">let </span>output_dir = <span class="macro">format!</span>(
+                <span class="string">"{addr:X}_{}"</span>,
+                string_name
+                    .replace(RESERVED_CHARS, <span class="string">"_"</span>)
+                    .chars()
+                    .take(MAX_FILENAME_LEN)
+                    .collect::&lt;String&gt;()
+            );
 
             <span class="comment">// Generate output file name
-            </span><span class="kw">let </span>func_name = f
-                .name()
-                .unwrap_or_else(|| <span class="string">"&lt;no name&gt;"</span>.into())
-                .replace([<span class="string">'.'</span>, <span class="string">'/'</span>], <span class="string">"_"</span>);
-            <span class="kw">let </span>output_file = <span class="macro">format!</span>(<span class="string">"{func_name}@{:X}"</span>, f.start_address());
+            </span><span class="kw">let </span>func_name = f.name().unwrap_or_else(|| <span class="string">"&lt;no name&gt;"</span>.into());
+            <span class="kw">let </span>output_file = <span class="macro">format!</span>(
+                <span class="string">"{}@{:X}"</span>,
+                func_name
+                    .replace(RESERVED_CHARS, <span class="string">"_"</span>)
+                    .chars()
+                    .take(MAX_FILENAME_LEN)
+                    .collect::&lt;String&gt;(),
+                f.start_address()
+            );
 
             <span class="comment">// Generate output path
             </span><span class="kw">let </span>dirpath_sub = dirpath.join(<span class="kw-2">&amp;</span>output_dir);
