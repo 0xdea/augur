@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 * Truncate filenames to handle filesystem limits.
 * Handle reserved characters in Windows filenames.
+* Fix typo in documentation.
 
 ## [0.5.1] - 2025-03-10
 

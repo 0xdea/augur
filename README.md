@@ -54,7 +54,7 @@ The easiest way to get the latest release is via [crates.io](https://crates.io/c
     $env:PATH="\path\to\ida;$env:PATH"
     $env:IDASDKDIR="\path\to\idasdk"
     $env:IDADIR="\path\to\ida" # if not set, the build script will check common locations
-    cargo build augur
+    cargo install augur
     ```
 
 ## Compiling
