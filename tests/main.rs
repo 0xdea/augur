@@ -8,7 +8,7 @@ use walkdir::WalkDir;
 /// Custom harness for integration tests
 fn main() -> anyhow::Result<()> {
     // Target binary path
-    const FILENAME: &str = "./tests/bin/ls";
+    const FILENAME: &str = "./tests/data/ls";
     // Expected number of string usages in functions
     const N_USAGES: usize = 27;
     // Expected number of subdirectories
