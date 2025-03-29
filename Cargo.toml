@@ -1,6 +1,6 @@
 [package]
 name = "augur"
-version = "0.5.3-alpha"
+version = "0.5.3"
 authors = ["Marco Ivaldi <raptor@0xdeadbeef.info>"]
 edition = "2024"
 description = "Reverse engineering assistant that extracts strings and related pseudo-code from a binary file."
@@ -9,7 +9,7 @@ repository = "https://github.com/0xdea/augur"
 documentation = "https://0xdeadbeef.info/augur/augur/"
 license = "MIT"
 keywords = ["reverse-engineering", "binary-file", "vuln-dev", "ida", "idalib"]
-categories = ["command-line-utilities"]
+categories = ["security", "command-line-utilities"]
 exclude = [".cargo/*", ".github/*", ".img/*", "tests/*"]
 
 [dependencies]
