@@ -149,7 +149,7 @@ impl From<String> for IDAString {
 }
 
 impl IDAString {
-    /// Recursively traverse XREFs and dump related pseudo-code to output file
+    /// Recursively traverse XREFs and dump related pseudo-code to the output file
     fn traverse_xrefs(
         &self,
         idb: &IDB,
@@ -159,7 +159,7 @@ impl IDAString {
     ) -> Result<(), HaruspexError> {
         // If XREF is in a function, dump the function's pseudo-code, otherwise just print its address
         if let Some(f) = idb.function_at(xref.from()) {
-            // Skip function if it has the `thunk` attribute
+            // Skip the function if it has the `thunk` attribute
             if f.flags().contains(FunctionFlags::THUNK) {
                 return Ok(());
             }
@@ -187,16 +187,16 @@ impl IDAString {
                 f.start_address()
             );
 
-            // Generate output path
+            // Generate the output path
             let dirpath_sub = dirpath.join(&output_dir);
             let output_path = dirpath_sub.join(output_file).with_extension("c");
 
-            // Create output directory if needed
+            // Create the output directory if needed
             if !dirpath_sub.exists() {
                 fs::create_dir(&dirpath_sub)?;
             }
 
-            // Decompile function and write pseudo-code to output file
+            // Decompile function and write pseudo-code to the output file
             decompile_to_file(idb, &f, &output_path)?;
 
             // Print XREF address, function name, and output path in case of successful decompilation
@@ -228,7 +228,7 @@ impl IDAString {
 ///
 /// Returns how many functions were decompiled, or a generic error in case something goes wrong.
 pub fn run(filepath: &Path) -> anyhow::Result<usize> {
-    // Open target binary and run auto-analysis
+    // Open the target binary and run auto-analysis
     println!("[*] Trying to analyze binary file {filepath:?}");
     let idb = IDB::open(filepath)
         .with_context(|| format!("Failed to analyze binary file {filepath:?}"))?;
@@ -256,7 +256,7 @@ pub fn run(filepath: &Path) -> anyhow::Result<usize> {
         .with_context(|| format!("Failed to create directory {dirpath:?}"))?;
     println!("[+] Output directory is ready");
 
-    // Locate XREFs to strings in target binary and dump related pseudo-code
+    // Locate XREFs to strings in the target binary and dump related pseudo-code
     println!();
     println!("[*] Finding cross-references to strings...");
     for i in 0..idb.strings().len() {
@@ -272,7 +272,7 @@ pub fn run(filepath: &Path) -> anyhow::Result<usize> {
             .context("Failed to get string address")?;
         println!("\n{addr:#X} {:?} ", string.as_ref());
 
-        // Traverse XREFs to string and dump related pseudo-code to output file
+        // Traverse XREFs to string and dump related pseudo-code to the output file
         idb.first_xref_to(addr, XRefQuery::ALL)
             .map_or(Ok::<(), HaruspexError>(()), |xref| {
                 match string.traverse_xrefs(&idb, &xref, addr, &dirpath) {
@@ -293,7 +293,7 @@ pub fn run(filepath: &Path) -> anyhow::Result<usize> {
             })?;
     }
 
-    // Remove output directory and return an error in case no functions were decompiled
+    // Remove the output directory and return an error in case no functions were decompiled
     if COUNTER.load(Ordering::Relaxed) == 0 {
         fs::remove_dir_all(&dirpath)
             .with_context(|| format!("Failed to remove directory {dirpath:?}"))?;

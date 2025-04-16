@@ -23,7 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-* Refactor integration test directory structure.
+* Refactor the integration test directory structure.
 * Update dependencies.
 
 ## [0.5.2] - 2025-03-20
@@ -60,7 +60,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
-* Remove target file check that is no longer necessary.
+* Remove the target file check that is no longer necessary.
 
 ## [0.2.3] - 2025-02-28
 
@@ -108,7 +108,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-* Fix comments and output in integration test.
+* Fix comments and output in the integration test.
 
 ## [0.1.0] - 2025-01-24
 

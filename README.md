@@ -110,5 +110,5 @@ Alternatively, you can build from [source](https://github.com/0xdea/augur):
 ## TODO
 
 * Integrate with [oneiromancer](https://github.com/0xdea/oneiromancer).
-* Allow users to choose to process string cross-references even if decompiler is unavailable.
+* Allow users to choose to process string cross-references even if the decompiler is unavailable.
 * Implement functionality similar to <https://github.com/joxeankoret/idamagicstrings>.

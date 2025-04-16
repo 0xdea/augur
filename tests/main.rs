@@ -16,14 +16,14 @@ fn main() -> anyhow::Result<()> {
     // Expected number of files in the output directory and all subdirectories
     const N_FILES: usize = N_USAGES + N_SUBDIRS + 1;
 
-    // Remove IDB file if it exists
+    // Remove the IDB file if it exists
     let idb_path = &format!("{FILENAME}.i64");
     let idb_path = Path::new(idb_path);
     if idb_path.is_file() {
         fs::remove_file(idb_path)?;
     }
 
-    // Remove output directory if it exists
+    // Remove the output directory if it exists
     let filepath = Path::new(FILENAME);
     let dirpath = filepath.with_extension("str");
     if dirpath.exists() {
@@ -55,7 +55,7 @@ fn main() -> anyhow::Result<()> {
     );
     println!("Ok.");
 
-    // Remove output directory at the end
+    // Remove the output directory at the end
     if dirpath.exists() {
         fs::remove_dir_all(&dirpath)?;
     }
