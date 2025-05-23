@@ -157,7 +157,7 @@ impl IDAString {
         addr: Address,
         dirpath: &Path,
     ) -> Result<(), HaruspexError> {
-        // If XREF is in a function, dump the function's pseudo-code, otherwise just print its address
+        // If XREF is in a function, dump the function's pseudo-code, otherwise only print its address
         if let Some(f) = idb.function_at(xref.from()) {
             // Skip the function if it has the `thunk` attribute
             if f.flags().contains(FunctionFlags::THUNK) {
@@ -200,7 +200,11 @@ impl IDAString {
             decompile_to_file(idb, &f, &output_path)?;
 
             // Print XREF address, function name, and output path in case of successful decompilation
-            println!("{:#X} in {func_name} -> {output_path:?}", xref.from());
+            println!(
+                "{:#X} in {func_name} -> `{}`",
+                xref.from(),
+                output_path.display()
+            );
             COUNTER.fetch_add(1, Ordering::Relaxed);
         } else {
             // Print only XREF address
@@ -229,9 +233,9 @@ impl IDAString {
 /// Returns how many functions were decompiled, or a generic error in case something goes wrong.
 pub fn run(filepath: &Path) -> anyhow::Result<usize> {
     // Open the target binary and run auto-analysis
-    println!("[*] Trying to analyze binary file {filepath:?}");
+    println!("[*] Trying to analyze binary file `{}`", filepath.display());
     let idb = IDB::open(filepath)
-        .with_context(|| format!("Failed to analyze binary file {filepath:?}"))?;
+        .with_context(|| format!("Failed to analyze binary file `{}`", filepath.display()))?;
     println!("[+] Successfully analyzed binary file");
     println!();
 
@@ -246,14 +250,14 @@ pub fn run(filepath: &Path) -> anyhow::Result<usize> {
         return Err(anyhow::anyhow!("Decompiler is not available"));
     }
 
-    // Create a new output directory, returning an error if it already exists and it's not empty
+    // Create a new output directory, returning an error if it already exists, and it's not empty
     let dirpath = filepath.with_extension("str");
-    println!("[*] Preparing output directory {dirpath:?}");
+    println!("[*] Preparing output directory `{}`", dirpath.display());
     if dirpath.exists() {
         fs::remove_dir(&dirpath).map_err(|_| anyhow::anyhow!("Output directory already exists"))?;
     }
     fs::create_dir_all(&dirpath)
-        .with_context(|| format!("Failed to create directory {dirpath:?}"))?;
+        .with_context(|| format!("Failed to create directory `{}`", dirpath.display()))?;
     println!("[+] Output directory is ready");
 
     // Locate XREFs to strings in the target binary and dump related pseudo-code
@@ -296,14 +300,17 @@ pub fn run(filepath: &Path) -> anyhow::Result<usize> {
     // Remove the output directory and return an error in case no functions were decompiled
     if COUNTER.load(Ordering::Relaxed) == 0 {
         fs::remove_dir_all(&dirpath)
-            .with_context(|| format!("Failed to remove directory {dirpath:?}"))?;
+            .with_context(|| format!("Failed to remove directory `{}`", dirpath.display()))?;
         return Err(anyhow::anyhow!(
             "No functions were decompiled, check your input file"
         ));
     }
 
     println!();
-    println!("[+] Found {COUNTER:?} string usages in functions, decompiled into {dirpath:?}");
-    println!("[+] Done processing binary file {filepath:?}");
+    println!(
+        "[+] Found {COUNTER:?} string usages in functions, decompiled into `{}`",
+        dirpath.display()
+    );
+    println!("[+] Done processing binary file `{}`", filepath.display());
     Ok(COUNTER.load(Ordering::Relaxed))
 }
