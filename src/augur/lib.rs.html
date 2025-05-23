@@ -157,7 +157,7 @@
 <a href=#157 id=157 data-nosnippet>157</a>        addr: Address,
 <a href=#158 id=158 data-nosnippet>158</a>        dirpath: <span class="kw-2">&amp;</span>Path,
 <a href=#159 id=159 data-nosnippet>159</a>    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), HaruspexError&gt; {
-<a href=#160 id=160 data-nosnippet>160</a>        <span class="comment">// If XREF is in a function, dump the function's pseudo-code, otherwise just print its address
+<a href=#160 id=160 data-nosnippet>160</a>        <span class="comment">// If XREF is in a function, dump the function's pseudo-code, otherwise only print its address
 <a href=#161 id=161 data-nosnippet>161</a>        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(f) = idb.function_at(xref.from()) {
 <a href=#162 id=162 data-nosnippet>162</a>            <span class="comment">// Skip the function if it has the `thunk` attribute
 <a href=#163 id=163 data-nosnippet>163</a>            </span><span class="kw">if </span>f.flags().contains(FunctionFlags::THUNK) {
@@ -200,110 +200,117 @@
 <a href=#200 id=200 data-nosnippet>200</a>            </span>decompile_to_file(idb, <span class="kw-2">&amp;</span>f, <span class="kw-2">&amp;</span>output_path)<span class="question-mark">?</span>;
 <a href=#201 id=201 data-nosnippet>201</a>
 <a href=#202 id=202 data-nosnippet>202</a>            <span class="comment">// Print XREF address, function name, and output path in case of successful decompilation
-<a href=#203 id=203 data-nosnippet>203</a>            </span><span class="macro">println!</span>(<span class="string">"{:#X} in {func_name} -&gt; {output_path:?}"</span>, xref.from());
-<a href=#204 id=204 data-nosnippet>204</a>            COUNTER.fetch_add(<span class="number">1</span>, Ordering::Relaxed);
-<a href=#205 id=205 data-nosnippet>205</a>        } <span class="kw">else </span>{
-<a href=#206 id=206 data-nosnippet>206</a>            <span class="comment">// Print only XREF address
-<a href=#207 id=207 data-nosnippet>207</a>            </span><span class="macro">println!</span>(<span class="string">"{:#X} in &lt;unknown&gt;"</span>, xref.from());
-<a href=#208 id=208 data-nosnippet>208</a>        }
-<a href=#209 id=209 data-nosnippet>209</a>
-<a href=#210 id=210 data-nosnippet>210</a>        <span class="comment">// Process next XREF
-<a href=#211 id=211 data-nosnippet>211</a>        </span>xref.next_to().map_or(<span class="prelude-val">Ok</span>(()), |next| {
-<a href=#212 id=212 data-nosnippet>212</a>            <span class="self">self</span>.traverse_xrefs(idb, <span class="kw-2">&amp;</span>next, addr, dirpath)
-<a href=#213 id=213 data-nosnippet>213</a>        })
-<a href=#214 id=214 data-nosnippet>214</a>    }
-<a href=#215 id=215 data-nosnippet>215</a>
-<a href=#216 id=216 data-nosnippet>216</a>    <span class="doccomment">/// Take an `IDAString` as input and return a `String` that contains only its printable chars
-<a href=#217 id=217 data-nosnippet>217</a>    </span><span class="kw">fn </span>filter_printable_chars(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
-<a href=#218 id=218 data-nosnippet>218</a>        <span class="self">self</span>.chars()
-<a href=#219 id=219 data-nosnippet>219</a>            .filter(|c| c.is_ascii_graphic() || <span class="kw-2">*</span>c == <span class="string">' '</span>)
-<a href=#220 id=220 data-nosnippet>220</a>            .collect()
-<a href=#221 id=221 data-nosnippet>221</a>    }
-<a href=#222 id=222 data-nosnippet>222</a>}
-<a href=#223 id=223 data-nosnippet>223</a>
-<a href=#224 id=224 data-nosnippet>224</a><span class="doccomment">/// Extract strings and pseudo-code of each function that references them from the binary at
-<a href=#225 id=225 data-nosnippet>225</a>/// `filepath` and save them in `filepath.str`.
-<a href=#226 id=226 data-nosnippet>226</a>///
-<a href=#227 id=227 data-nosnippet>227</a>/// ## Errors
-<a href=#228 id=228 data-nosnippet>228</a>///
-<a href=#229 id=229 data-nosnippet>229</a>/// Returns how many functions were decompiled, or a generic error in case something goes wrong.
-<a href=#230 id=230 data-nosnippet>230</a></span><span class="kw">pub fn </span>run(filepath: <span class="kw-2">&amp;</span>Path) -&gt; anyhow::Result&lt;usize&gt; {
-<a href=#231 id=231 data-nosnippet>231</a>    <span class="comment">// Open the target binary and run auto-analysis
-<a href=#232 id=232 data-nosnippet>232</a>    </span><span class="macro">println!</span>(<span class="string">"[*] Trying to analyze binary file {filepath:?}"</span>);
-<a href=#233 id=233 data-nosnippet>233</a>    <span class="kw">let </span>idb = IDB::open(filepath)
-<a href=#234 id=234 data-nosnippet>234</a>        .with_context(|| <span class="macro">format!</span>(<span class="string">"Failed to analyze binary file {filepath:?}"</span>))<span class="question-mark">?</span>;
-<a href=#235 id=235 data-nosnippet>235</a>    <span class="macro">println!</span>(<span class="string">"[+] Successfully analyzed binary file"</span>);
-<a href=#236 id=236 data-nosnippet>236</a>    <span class="macro">println!</span>();
-<a href=#237 id=237 data-nosnippet>237</a>
-<a href=#238 id=238 data-nosnippet>238</a>    <span class="comment">// Print binary file information
-<a href=#239 id=239 data-nosnippet>239</a>    </span><span class="macro">println!</span>(<span class="string">"[-] Processor: {}"</span>, idb.processor().long_name(),);
-<a href=#240 id=240 data-nosnippet>240</a>    <span class="macro">println!</span>(<span class="string">"[-] Compiler: {:?}"</span>, idb.meta().cc_id());
-<a href=#241 id=241 data-nosnippet>241</a>    <span class="macro">println!</span>(<span class="string">"[-] File type: {:?}"</span>, idb.meta().filetype());
-<a href=#242 id=242 data-nosnippet>242</a>    <span class="macro">println!</span>();
-<a href=#243 id=243 data-nosnippet>243</a>
-<a href=#244 id=244 data-nosnippet>244</a>    <span class="comment">// Check if Hex-Rays decompiler is available
-<a href=#245 id=245 data-nosnippet>245</a>    </span><span class="kw">if </span>!idb.decompiler_available() {
-<a href=#246 id=246 data-nosnippet>246</a>        <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow::anyhow!</span>(<span class="string">"Decompiler is not available"</span>));
-<a href=#247 id=247 data-nosnippet>247</a>    }
-<a href=#248 id=248 data-nosnippet>248</a>
-<a href=#249 id=249 data-nosnippet>249</a>    <span class="comment">// Create a new output directory, returning an error if it already exists and it's not empty
-<a href=#250 id=250 data-nosnippet>250</a>    </span><span class="kw">let </span>dirpath = filepath.with_extension(<span class="string">"str"</span>);
-<a href=#251 id=251 data-nosnippet>251</a>    <span class="macro">println!</span>(<span class="string">"[*] Preparing output directory {dirpath:?}"</span>);
-<a href=#252 id=252 data-nosnippet>252</a>    <span class="kw">if </span>dirpath.exists() {
-<a href=#253 id=253 data-nosnippet>253</a>        fs::remove_dir(<span class="kw-2">&amp;</span>dirpath).map_err(|<span class="kw">_</span>| <span class="macro">anyhow::anyhow!</span>(<span class="string">"Output directory already exists"</span>))<span class="question-mark">?</span>;
-<a href=#254 id=254 data-nosnippet>254</a>    }
-<a href=#255 id=255 data-nosnippet>255</a>    fs::create_dir_all(<span class="kw-2">&amp;</span>dirpath)
-<a href=#256 id=256 data-nosnippet>256</a>        .with_context(|| <span class="macro">format!</span>(<span class="string">"Failed to create directory {dirpath:?}"</span>))<span class="question-mark">?</span>;
-<a href=#257 id=257 data-nosnippet>257</a>    <span class="macro">println!</span>(<span class="string">"[+] Output directory is ready"</span>);
-<a href=#258 id=258 data-nosnippet>258</a>
-<a href=#259 id=259 data-nosnippet>259</a>    <span class="comment">// Locate XREFs to strings in the target binary and dump related pseudo-code
-<a href=#260 id=260 data-nosnippet>260</a>    </span><span class="macro">println!</span>();
-<a href=#261 id=261 data-nosnippet>261</a>    <span class="macro">println!</span>(<span class="string">"[*] Finding cross-references to strings..."</span>);
-<a href=#262 id=262 data-nosnippet>262</a>    <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..idb.strings().len() {
-<a href=#263 id=263 data-nosnippet>263</a>        <span class="comment">// Extract string with its address
-<a href=#264 id=264 data-nosnippet>264</a>        </span><span class="kw">let </span>string: IDAString = idb
-<a href=#265 id=265 data-nosnippet>265</a>            .strings()
-<a href=#266 id=266 data-nosnippet>266</a>            .get_by_index(i)
-<a href=#267 id=267 data-nosnippet>267</a>            .context(<span class="string">"Failed to get string content"</span>)<span class="question-mark">?
-<a href=#268 id=268 data-nosnippet>268</a>            </span>.into();
-<a href=#269 id=269 data-nosnippet>269</a>        <span class="kw">let </span>addr = idb
-<a href=#270 id=270 data-nosnippet>270</a>            .strings()
-<a href=#271 id=271 data-nosnippet>271</a>            .get_address_by_index(i)
-<a href=#272 id=272 data-nosnippet>272</a>            .context(<span class="string">"Failed to get string address"</span>)<span class="question-mark">?</span>;
-<a href=#273 id=273 data-nosnippet>273</a>        <span class="macro">println!</span>(<span class="string">"\n{addr:#X} {:?} "</span>, string.as_ref());
-<a href=#274 id=274 data-nosnippet>274</a>
-<a href=#275 id=275 data-nosnippet>275</a>        <span class="comment">// Traverse XREFs to string and dump related pseudo-code to the output file
-<a href=#276 id=276 data-nosnippet>276</a>        </span>idb.first_xref_to(addr, XRefQuery::ALL)
-<a href=#277 id=277 data-nosnippet>277</a>            .map_or(<span class="prelude-val">Ok</span>::&lt;(), HaruspexError&gt;(()), |xref| {
-<a href=#278 id=278 data-nosnippet>278</a>                <span class="kw">match </span>string.traverse_xrefs(<span class="kw-2">&amp;</span>idb, <span class="kw-2">&amp;</span>xref, addr, <span class="kw-2">&amp;</span>dirpath) {
-<a href=#279 id=279 data-nosnippet>279</a>                    <span class="comment">// Cleanup and return an error if Hex-Rays decompiler license is not available
-<a href=#280 id=280 data-nosnippet>280</a>                    </span><span class="prelude-val">Err</span>(HaruspexError::DecompileFailed(IDAError::HexRays(e)))
-<a href=#281 id=281 data-nosnippet>281</a>                        <span class="kw">if </span>e.code() == HexRaysErrorCode::License =&gt;
-<a href=#282 id=282 data-nosnippet>282</a>                    {
-<a href=#283 id=283 data-nosnippet>283</a>                        fs::remove_dir_all(<span class="kw-2">&amp;</span>dirpath)<span class="question-mark">?</span>;
-<a href=#284 id=284 data-nosnippet>284</a>                        <span class="prelude-val">Err</span>(IDAError::HexRays(e).into())
-<a href=#285 id=285 data-nosnippet>285</a>                    }
-<a href=#286 id=286 data-nosnippet>286</a>
-<a href=#287 id=287 data-nosnippet>287</a>                    <span class="comment">// Ignore other IDA errors and do nothing when XREF processing is finished
-<a href=#288 id=288 data-nosnippet>288</a>                    </span><span class="prelude-val">Err</span>(HaruspexError::DecompileFailed(<span class="kw">_</span>)) | <span class="prelude-val">Ok</span>(()) =&gt; <span class="prelude-val">Ok</span>(()),
-<a href=#289 id=289 data-nosnippet>289</a>
-<a href=#290 id=290 data-nosnippet>290</a>                    <span class="comment">// Return any other error
-<a href=#291 id=291 data-nosnippet>291</a>                    </span><span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(e),
-<a href=#292 id=292 data-nosnippet>292</a>                }
-<a href=#293 id=293 data-nosnippet>293</a>            })<span class="question-mark">?</span>;
-<a href=#294 id=294 data-nosnippet>294</a>    }
-<a href=#295 id=295 data-nosnippet>295</a>
-<a href=#296 id=296 data-nosnippet>296</a>    <span class="comment">// Remove the output directory and return an error in case no functions were decompiled
-<a href=#297 id=297 data-nosnippet>297</a>    </span><span class="kw">if </span>COUNTER.load(Ordering::Relaxed) == <span class="number">0 </span>{
-<a href=#298 id=298 data-nosnippet>298</a>        fs::remove_dir_all(<span class="kw-2">&amp;</span>dirpath)
-<a href=#299 id=299 data-nosnippet>299</a>            .with_context(|| <span class="macro">format!</span>(<span class="string">"Failed to remove directory {dirpath:?}"</span>))<span class="question-mark">?</span>;
-<a href=#300 id=300 data-nosnippet>300</a>        <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow::anyhow!</span>(
-<a href=#301 id=301 data-nosnippet>301</a>            <span class="string">"No functions were decompiled, check your input file"
-<a href=#302 id=302 data-nosnippet>302</a>        </span>));
-<a href=#303 id=303 data-nosnippet>303</a>    }
-<a href=#304 id=304 data-nosnippet>304</a>
-<a href=#305 id=305 data-nosnippet>305</a>    <span class="macro">println!</span>();
-<a href=#306 id=306 data-nosnippet>306</a>    <span class="macro">println!</span>(<span class="string">"[+] Found {COUNTER:?} string usages in functions, decompiled into {dirpath:?}"</span>);
-<a href=#307 id=307 data-nosnippet>307</a>    <span class="macro">println!</span>(<span class="string">"[+] Done processing binary file {filepath:?}"</span>);
-<a href=#308 id=308 data-nosnippet>308</a>    <span class="prelude-val">Ok</span>(COUNTER.load(Ordering::Relaxed))
-<a href=#309 id=309 data-nosnippet>309</a>}</code></pre></div></section></main></body></html>
+<a href=#203 id=203 data-nosnippet>203</a>            </span><span class="macro">println!</span>(
+<a href=#204 id=204 data-nosnippet>204</a>                <span class="string">"{:#X} in {func_name} -&gt; `{}`"</span>,
+<a href=#205 id=205 data-nosnippet>205</a>                xref.from(),
+<a href=#206 id=206 data-nosnippet>206</a>                output_path.display()
+<a href=#207 id=207 data-nosnippet>207</a>            );
+<a href=#208 id=208 data-nosnippet>208</a>            COUNTER.fetch_add(<span class="number">1</span>, Ordering::Relaxed);
+<a href=#209 id=209 data-nosnippet>209</a>        } <span class="kw">else </span>{
+<a href=#210 id=210 data-nosnippet>210</a>            <span class="comment">// Print only XREF address
+<a href=#211 id=211 data-nosnippet>211</a>            </span><span class="macro">println!</span>(<span class="string">"{:#X} in &lt;unknown&gt;"</span>, xref.from());
+<a href=#212 id=212 data-nosnippet>212</a>        }
+<a href=#213 id=213 data-nosnippet>213</a>
+<a href=#214 id=214 data-nosnippet>214</a>        <span class="comment">// Process next XREF
+<a href=#215 id=215 data-nosnippet>215</a>        </span>xref.next_to().map_or(<span class="prelude-val">Ok</span>(()), |next| {
+<a href=#216 id=216 data-nosnippet>216</a>            <span class="self">self</span>.traverse_xrefs(idb, <span class="kw-2">&amp;</span>next, addr, dirpath)
+<a href=#217 id=217 data-nosnippet>217</a>        })
+<a href=#218 id=218 data-nosnippet>218</a>    }
+<a href=#219 id=219 data-nosnippet>219</a>
+<a href=#220 id=220 data-nosnippet>220</a>    <span class="doccomment">/// Take an `IDAString` as input and return a `String` that contains only its printable chars
+<a href=#221 id=221 data-nosnippet>221</a>    </span><span class="kw">fn </span>filter_printable_chars(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
+<a href=#222 id=222 data-nosnippet>222</a>        <span class="self">self</span>.chars()
+<a href=#223 id=223 data-nosnippet>223</a>            .filter(|c| c.is_ascii_graphic() || <span class="kw-2">*</span>c == <span class="string">' '</span>)
+<a href=#224 id=224 data-nosnippet>224</a>            .collect()
+<a href=#225 id=225 data-nosnippet>225</a>    }
+<a href=#226 id=226 data-nosnippet>226</a>}
+<a href=#227 id=227 data-nosnippet>227</a>
+<a href=#228 id=228 data-nosnippet>228</a><span class="doccomment">/// Extract strings and pseudo-code of each function that references them from the binary at
+<a href=#229 id=229 data-nosnippet>229</a>/// `filepath` and save them in `filepath.str`.
+<a href=#230 id=230 data-nosnippet>230</a>///
+<a href=#231 id=231 data-nosnippet>231</a>/// ## Errors
+<a href=#232 id=232 data-nosnippet>232</a>///
+<a href=#233 id=233 data-nosnippet>233</a>/// Returns how many functions were decompiled, or a generic error in case something goes wrong.
+<a href=#234 id=234 data-nosnippet>234</a></span><span class="kw">pub fn </span>run(filepath: <span class="kw-2">&amp;</span>Path) -&gt; anyhow::Result&lt;usize&gt; {
+<a href=#235 id=235 data-nosnippet>235</a>    <span class="comment">// Open the target binary and run auto-analysis
+<a href=#236 id=236 data-nosnippet>236</a>    </span><span class="macro">println!</span>(<span class="string">"[*] Trying to analyze binary file `{}`"</span>, filepath.display());
+<a href=#237 id=237 data-nosnippet>237</a>    <span class="kw">let </span>idb = IDB::open(filepath)
+<a href=#238 id=238 data-nosnippet>238</a>        .with_context(|| <span class="macro">format!</span>(<span class="string">"Failed to analyze binary file `{}`"</span>, filepath.display()))<span class="question-mark">?</span>;
+<a href=#239 id=239 data-nosnippet>239</a>    <span class="macro">println!</span>(<span class="string">"[+] Successfully analyzed binary file"</span>);
+<a href=#240 id=240 data-nosnippet>240</a>    <span class="macro">println!</span>();
+<a href=#241 id=241 data-nosnippet>241</a>
+<a href=#242 id=242 data-nosnippet>242</a>    <span class="comment">// Print binary file information
+<a href=#243 id=243 data-nosnippet>243</a>    </span><span class="macro">println!</span>(<span class="string">"[-] Processor: {}"</span>, idb.processor().long_name(),);
+<a href=#244 id=244 data-nosnippet>244</a>    <span class="macro">println!</span>(<span class="string">"[-] Compiler: {:?}"</span>, idb.meta().cc_id());
+<a href=#245 id=245 data-nosnippet>245</a>    <span class="macro">println!</span>(<span class="string">"[-] File type: {:?}"</span>, idb.meta().filetype());
+<a href=#246 id=246 data-nosnippet>246</a>    <span class="macro">println!</span>();
+<a href=#247 id=247 data-nosnippet>247</a>
+<a href=#248 id=248 data-nosnippet>248</a>    <span class="comment">// Check if Hex-Rays decompiler is available
+<a href=#249 id=249 data-nosnippet>249</a>    </span><span class="kw">if </span>!idb.decompiler_available() {
+<a href=#250 id=250 data-nosnippet>250</a>        <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow::anyhow!</span>(<span class="string">"Decompiler is not available"</span>));
+<a href=#251 id=251 data-nosnippet>251</a>    }
+<a href=#252 id=252 data-nosnippet>252</a>
+<a href=#253 id=253 data-nosnippet>253</a>    <span class="comment">// Create a new output directory, returning an error if it already exists, and it's not empty
+<a href=#254 id=254 data-nosnippet>254</a>    </span><span class="kw">let </span>dirpath = filepath.with_extension(<span class="string">"str"</span>);
+<a href=#255 id=255 data-nosnippet>255</a>    <span class="macro">println!</span>(<span class="string">"[*] Preparing output directory `{}`"</span>, dirpath.display());
+<a href=#256 id=256 data-nosnippet>256</a>    <span class="kw">if </span>dirpath.exists() {
+<a href=#257 id=257 data-nosnippet>257</a>        fs::remove_dir(<span class="kw-2">&amp;</span>dirpath).map_err(|<span class="kw">_</span>| <span class="macro">anyhow::anyhow!</span>(<span class="string">"Output directory already exists"</span>))<span class="question-mark">?</span>;
+<a href=#258 id=258 data-nosnippet>258</a>    }
+<a href=#259 id=259 data-nosnippet>259</a>    fs::create_dir_all(<span class="kw-2">&amp;</span>dirpath)
+<a href=#260 id=260 data-nosnippet>260</a>        .with_context(|| <span class="macro">format!</span>(<span class="string">"Failed to create directory `{}`"</span>, dirpath.display()))<span class="question-mark">?</span>;
+<a href=#261 id=261 data-nosnippet>261</a>    <span class="macro">println!</span>(<span class="string">"[+] Output directory is ready"</span>);
+<a href=#262 id=262 data-nosnippet>262</a>
+<a href=#263 id=263 data-nosnippet>263</a>    <span class="comment">// Locate XREFs to strings in the target binary and dump related pseudo-code
+<a href=#264 id=264 data-nosnippet>264</a>    </span><span class="macro">println!</span>();
+<a href=#265 id=265 data-nosnippet>265</a>    <span class="macro">println!</span>(<span class="string">"[*] Finding cross-references to strings..."</span>);
+<a href=#266 id=266 data-nosnippet>266</a>    <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..idb.strings().len() {
+<a href=#267 id=267 data-nosnippet>267</a>        <span class="comment">// Extract string with its address
+<a href=#268 id=268 data-nosnippet>268</a>        </span><span class="kw">let </span>string: IDAString = idb
+<a href=#269 id=269 data-nosnippet>269</a>            .strings()
+<a href=#270 id=270 data-nosnippet>270</a>            .get_by_index(i)
+<a href=#271 id=271 data-nosnippet>271</a>            .context(<span class="string">"Failed to get string content"</span>)<span class="question-mark">?
+<a href=#272 id=272 data-nosnippet>272</a>            </span>.into();
+<a href=#273 id=273 data-nosnippet>273</a>        <span class="kw">let </span>addr = idb
+<a href=#274 id=274 data-nosnippet>274</a>            .strings()
+<a href=#275 id=275 data-nosnippet>275</a>            .get_address_by_index(i)
+<a href=#276 id=276 data-nosnippet>276</a>            .context(<span class="string">"Failed to get string address"</span>)<span class="question-mark">?</span>;
+<a href=#277 id=277 data-nosnippet>277</a>        <span class="macro">println!</span>(<span class="string">"\n{addr:#X} {:?} "</span>, string.as_ref());
+<a href=#278 id=278 data-nosnippet>278</a>
+<a href=#279 id=279 data-nosnippet>279</a>        <span class="comment">// Traverse XREFs to string and dump related pseudo-code to the output file
+<a href=#280 id=280 data-nosnippet>280</a>        </span>idb.first_xref_to(addr, XRefQuery::ALL)
+<a href=#281 id=281 data-nosnippet>281</a>            .map_or(<span class="prelude-val">Ok</span>::&lt;(), HaruspexError&gt;(()), |xref| {
+<a href=#282 id=282 data-nosnippet>282</a>                <span class="kw">match </span>string.traverse_xrefs(<span class="kw-2">&amp;</span>idb, <span class="kw-2">&amp;</span>xref, addr, <span class="kw-2">&amp;</span>dirpath) {
+<a href=#283 id=283 data-nosnippet>283</a>                    <span class="comment">// Cleanup and return an error if Hex-Rays decompiler license is not available
+<a href=#284 id=284 data-nosnippet>284</a>                    </span><span class="prelude-val">Err</span>(HaruspexError::DecompileFailed(IDAError::HexRays(e)))
+<a href=#285 id=285 data-nosnippet>285</a>                        <span class="kw">if </span>e.code() == HexRaysErrorCode::License =&gt;
+<a href=#286 id=286 data-nosnippet>286</a>                    {
+<a href=#287 id=287 data-nosnippet>287</a>                        fs::remove_dir_all(<span class="kw-2">&amp;</span>dirpath)<span class="question-mark">?</span>;
+<a href=#288 id=288 data-nosnippet>288</a>                        <span class="prelude-val">Err</span>(IDAError::HexRays(e).into())
+<a href=#289 id=289 data-nosnippet>289</a>                    }
+<a href=#290 id=290 data-nosnippet>290</a>
+<a href=#291 id=291 data-nosnippet>291</a>                    <span class="comment">// Ignore other IDA errors and do nothing when XREF processing is finished
+<a href=#292 id=292 data-nosnippet>292</a>                    </span><span class="prelude-val">Err</span>(HaruspexError::DecompileFailed(<span class="kw">_</span>)) | <span class="prelude-val">Ok</span>(()) =&gt; <span class="prelude-val">Ok</span>(()),
+<a href=#293 id=293 data-nosnippet>293</a>
+<a href=#294 id=294 data-nosnippet>294</a>                    <span class="comment">// Return any other error
+<a href=#295 id=295 data-nosnippet>295</a>                    </span><span class="prelude-val">Err</span>(e) =&gt; <span class="prelude-val">Err</span>(e),
+<a href=#296 id=296 data-nosnippet>296</a>                }
+<a href=#297 id=297 data-nosnippet>297</a>            })<span class="question-mark">?</span>;
+<a href=#298 id=298 data-nosnippet>298</a>    }
+<a href=#299 id=299 data-nosnippet>299</a>
+<a href=#300 id=300 data-nosnippet>300</a>    <span class="comment">// Remove the output directory and return an error in case no functions were decompiled
+<a href=#301 id=301 data-nosnippet>301</a>    </span><span class="kw">if </span>COUNTER.load(Ordering::Relaxed) == <span class="number">0 </span>{
+<a href=#302 id=302 data-nosnippet>302</a>        fs::remove_dir_all(<span class="kw-2">&amp;</span>dirpath)
+<a href=#303 id=303 data-nosnippet>303</a>            .with_context(|| <span class="macro">format!</span>(<span class="string">"Failed to remove directory `{}`"</span>, dirpath.display()))<span class="question-mark">?</span>;
+<a href=#304 id=304 data-nosnippet>304</a>        <span class="kw">return </span><span class="prelude-val">Err</span>(<span class="macro">anyhow::anyhow!</span>(
+<a href=#305 id=305 data-nosnippet>305</a>            <span class="string">"No functions were decompiled, check your input file"
+<a href=#306 id=306 data-nosnippet>306</a>        </span>));
+<a href=#307 id=307 data-nosnippet>307</a>    }
+<a href=#308 id=308 data-nosnippet>308</a>
+<a href=#309 id=309 data-nosnippet>309</a>    <span class="macro">println!</span>();
+<a href=#310 id=310 data-nosnippet>310</a>    <span class="macro">println!</span>(
+<a href=#311 id=311 data-nosnippet>311</a>        <span class="string">"[+] Found {COUNTER:?} string usages in functions, decompiled into `{}`"</span>,
+<a href=#312 id=312 data-nosnippet>312</a>        dirpath.display()
+<a href=#313 id=313 data-nosnippet>313</a>    );
+<a href=#314 id=314 data-nosnippet>314</a>    <span class="macro">println!</span>(<span class="string">"[+] Done processing binary file `{}`"</span>, filepath.display());
+<a href=#315 id=315 data-nosnippet>315</a>    <span class="prelude-val">Ok</span>(COUNTER.load(Ordering::Relaxed))
+<a href=#316 id=316 data-nosnippet>316</a>}</code></pre></div></section></main></body></html>
