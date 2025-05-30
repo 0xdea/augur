@@ -1,0 +1,15 @@
+{
+  "IDAMetadataDescriptorVersion": 1,
+  "plugin": {
+    "name": "augur",
+    "entryPoint": "augur",
+    "categories": [
+      "vulnerability-research-and-exploit-development",
+      "decompilation"
+    ],
+    "logoPath": ".img/logo.png",
+    "idaVersions": "9.1",
+    "description": "Reverse engineering assistant that extracts strings and related pseudo-code from a binary file.",
+    "version": "0.6.0"
+  }
+}
