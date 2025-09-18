@@ -11,7 +11,7 @@
 //! directory tree.
 //!
 //! ## Features
-//! * Blazing fast, headless user experience courtesy of IDA Pro 9 and Binarly's idalib Rust bindings.
+//! * Blazing fast, headless user experience courtesy of IDA Pro 9.x and Binarly's idalib Rust bindings.
 //! * Support for binary targets for any architecture implemented by IDA Pro's Hex-Rays decompiler.
 //! * Decompilation feature based on the `decompile_to_file` API exported by [haruspex](https://github.com/0xdea/haruspex).
 //! * Pseudo-code of each function that references a specific string is stored in a separate directory.
