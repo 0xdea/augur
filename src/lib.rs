@@ -1,20 +1,20 @@
 //!
-//! augur - Tool to extract strings and related pseudo-code
+//! augur - Tool to extract strings and related pseudocode
 //! Copyright (c) 2024-2025 Marco Ivaldi <raptor@0xdeadbeef.info>
 //!
 //! > "In fact I've actually triggered buffer overflows by just entering my real name."
 //! >
 //! > -- A.
 //!
-//! Augur is a blazing fast IDA Pro headless plugin that extracts strings and related pseudo-code
-//! from a binary file. It stores pseudo-code of functions that reference strings in an organized
+//! Augur is a blazing fast IDA Pro headless plugin that extracts strings and related pseudocode
+//! from a binary file. It stores pseudocode of functions that reference strings in an organized
 //! directory tree.
 //!
 //! ## Features
 //! * Blazing fast, headless user experience courtesy of IDA Pro 9.x and Binarly's idalib Rust bindings.
 //! * Support for binary targets for any architecture implemented by IDA Pro's Hex-Rays decompiler.
 //! * Decompilation feature based on the `decompile_to_file` API exported by [haruspex](https://github.com/0xdea/haruspex).
-//! * Pseudo-code of each function that references a specific string is stored in a separate directory.
+//! * Pseudocode of each function that references a specific string is stored in a separate directory.
 //!
 //! ## Blog post
 //! * <https://security.humanativaspa.it/streamlining-vulnerability-research-with-ida-pro-and-rust>
@@ -69,7 +69,7 @@
 //!     ```sh
 //!     augur <binary_file>
 //!     ```
-//! 3. Find the extracted pseudo-code of each decompiled function in the `binary_file.str` directory,
+//! 3. Find the extracted pseudocode of each decompiled function in the `binary_file.str` directory,
 //!    organized by string:
 //!     ```sh
 //!     vim <binary_file>.str
@@ -144,7 +144,7 @@ impl From<String> for IDAString {
 }
 
 impl IDAString {
-    /// Recursively traverse XREFs and dump related pseudo-code to the output file
+    /// Recursively traverse XREFs and dump related pseudocode to the output file
     fn traverse_xrefs(
         &self,
         idb: &IDB,
@@ -152,7 +152,7 @@ impl IDAString {
         addr: Address,
         dirpath: &Path,
     ) -> Result<(), HaruspexError> {
-        // If XREF is in a function, dump the function's pseudo-code, otherwise only print its address
+        // If XREF is in a function, dump the function's pseudocode, otherwise only print its address
         if let Some(f) = idb.function_at(xref.from()) {
             // Skip the function if it has the `thunk` attribute
             if f.flags().contains(FunctionFlags::THUNK) {
@@ -191,7 +191,7 @@ impl IDAString {
                 fs::create_dir(&dirpath_sub)?;
             }
 
-            // Decompile function and write pseudo-code to the output file
+            // Decompile function and write pseudocode to the output file
             decompile_to_file(idb, &f, &output_path)?;
 
             // Print XREF address, function name, and output path in case of successful decompilation
@@ -220,7 +220,7 @@ impl IDAString {
     }
 }
 
-/// Extract strings and pseudo-code of each function that references them from the binary at
+/// Extract strings and pseudocode of each function that references them from the binary at
 /// `filepath` and save them in `filepath.str`.
 ///
 /// ## Errors
@@ -255,7 +255,7 @@ pub fn run(filepath: &Path) -> anyhow::Result<usize> {
         .with_context(|| format!("Failed to create directory `{}`", dirpath.display()))?;
     println!("[+] Output directory is ready");
 
-    // Locate XREFs to strings in the target binary and dump related pseudo-code
+    // Locate XREFs to strings in the target binary and dump related pseudocode
     println!();
     println!("[*] Finding cross-references to strings...");
     for i in 0..idb.strings().len() {
@@ -271,7 +271,7 @@ pub fn run(filepath: &Path) -> anyhow::Result<usize> {
             .context("Failed to get string address")?;
         println!("\n{addr:#X} {:?} ", string.as_ref());
 
-        // Traverse XREFs to string and dump related pseudo-code to the output file
+        // Traverse XREFs to string and dump related pseudocode to the output file
         idb.first_xref_to(addr, XRefQuery::ALL)
             .map_or(Ok::<(), HaruspexError>(()), |xref| {
                 match string.traverse_xrefs(&idb, &xref, addr, &dirpath) {

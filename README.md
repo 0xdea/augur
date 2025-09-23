@@ -12,8 +12,8 @@
 >
 > -- A.
 
-Augur is a blazing fast IDA Pro headless plugin that extracts strings and related pseudo-code from a binary file.
-It stores pseudo-code of functions that reference strings in an organized directory tree.
+Augur is a blazing fast IDA Pro headless plugin that extracts strings and related pseudocode from a binary file.
+It stores pseudocode of functions that reference strings in an organized directory tree.
 
 ![](https://raw.githubusercontent.com/0xdea/augur/master/.img/screen01.png)
 
@@ -22,7 +22,7 @@ It stores pseudo-code of functions that reference strings in an organized direct
 * Blazing fast, headless user experience courtesy of IDA Pro 9.x and Binarly's idalib Rust bindings.
 * Support for binary targets for any architecture implemented by IDA Pro's Hex-Rays decompiler.
 * Decompilation feature based on the `decompile_to_file` API exported by [haruspex](https://github.com/0xdea/haruspex).
-* Pseudo-code of each function that references a specific string is stored in a separate directory.
+* Pseudocode of each function that references a specific string is stored in a separate directory.
 
 ## Blog post
 
@@ -84,7 +84,7 @@ Alternatively, you can build from [source](https://github.com/0xdea/augur):
     ```sh
     augur <binary_file>
     ```
-3. Find the extracted pseudo-code of each decompiled function in the `binary_file.str` directory, organized by string:
+3. Find the extracted pseudocode of each decompiled function in the `binary_file.str` directory, organized by string:
     ```sh
     vim <binary_file>.str
     code <binary_file>.str
