@@ -26,7 +26,7 @@ It stores pseudocode of functions that reference strings in an organized directo
 
 ## Blog post
 
-* <https://security.humanativaspa.it/streamlining-vulnerability-research-with-ida-pro-and-rust>
+* <https://hnsecurity.it/blog/streamlining-vulnerability-research-with-ida-pro-and-rust>
 
 ## See also
 
