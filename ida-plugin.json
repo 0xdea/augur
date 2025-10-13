@@ -10,6 +10,6 @@
     "logoPath": ".img/logo.png",
     "idaVersions": ">=9.0",
     "description": "Reverse engineering assistant that extracts strings and related pseudocode from a binary file.",
-    "version": "0.7.1"
+    "version": "0.7.2"
   }
 }
