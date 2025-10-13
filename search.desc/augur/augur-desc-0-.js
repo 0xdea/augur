@@ -1,1 +1,1 @@
-searchState.loadedDescShard("augur", 0, "augur - Tool to extract strings and related pseudo-code …\nExtract strings and pseudo-code of each function that …")
+searchState.loadedDescShard("augur", 0, "augur - Tool to extract strings and related pseudocode …\nExtract strings and pseudocode of each function that …")
