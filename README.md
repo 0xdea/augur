@@ -8,7 +8,7 @@
 [![build](https://github.com/0xdea/augur/actions/workflows/build.yml/badge.svg)](https://github.com/0xdea/augur/actions/workflows/build.yml)
 [![doc](https://github.com/0xdea/augur/actions/workflows/doc.yml/badge.svg)](https://github.com/0xdea/augur/actions/workflows/doc.yml)
 
-> "In fact I've actually triggered buffer overflows by just entering my real name."
+> "In fact, I've actually triggered buffer overflows by just entering my real name."
 >
 > -- A.
 
