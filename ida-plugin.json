@@ -2,14 +2,35 @@
   "IDAMetadataDescriptorVersion": 1,
   "plugin": {
     "name": "augur",
-    "entryPoint": "augur",
+    "entryPoint": "src/main.rs",
+    "version": "0.7.2",
+    "idaVersions": [
+      "9.0",
+      "9.1",
+      "9.2"
+    ],
+    "description": "Reverse engineering assistant that extracts strings and related pseudocode from a binary file.",
+    "license": "MIT",
     "categories": [
       "vulnerability-research-and-exploit-development",
       "decompilation"
     ],
-    "logoPath": ".img/logo.png",
-    "idaVersions": ">=9.0",
-    "description": "Reverse engineering assistant that extracts strings and related pseudocode from a binary file.",
-    "version": "0.7.2"
+    "urls": {
+      "repository": "https://github.com/0xdea/augur"
+    },
+    "authors": [
+      {
+        "name": "Marco Ivaldi",
+        "email": "raptor@0xdeadbeef.info"
+      }
+    ],
+    "keywords": [
+      "vulnerability-research",
+      "reverse-engineering",
+      "security",
+      "idalib",
+      "rust"
+    ],
+    "logoPath": ".img/logo.png"
   }
 }
