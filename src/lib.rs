@@ -14,9 +14,6 @@ use idalib::idb::IDB;
 use idalib::xref::{XRef, XRefQuery};
 use idalib::{Address, IDAError};
 
-/// Number of decompiled functions
-static COUNTER: AtomicUsize = AtomicUsize::new(0);
-
 /// Reserved characters in filenames
 #[cfg(unix)]
 const RESERVED_CHARS: &[char] = &['.', '/'];
@@ -25,6 +22,9 @@ const RESERVED_CHARS: &[char] = &['.', '/', '<', '>', ':', '"', '\\', '|', '?', 
 
 /// Maximum length of filenames
 const MAX_FILENAME_LEN: usize = 64;
+
+/// Number of decompiled functions
+static COUNTER: AtomicUsize = AtomicUsize::new(0);
 
 /// IDA string type that holds strings extracted from IDA's string list
 #[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
