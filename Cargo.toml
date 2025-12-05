@@ -1,6 +1,6 @@
 [package]
 name = "augur"
-version = "0.7.4-alpha"
+version = "0.7.4"
 authors = ["Marco Ivaldi <raptor@0xdeadbeef.info>"]
 edition = "2024"
 description = "Reverse engineering assistant that extracts strings and related pseudocode from a binary file."
