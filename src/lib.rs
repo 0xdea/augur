@@ -205,7 +205,7 @@ pub fn run(filepath: &Path) -> anyhow::Result<usize> {
 
     println!();
     println!(
-        "[+] Found {COUNTER:?} string usages in functions, decompiled into `{}`",
+        "[+] Found {COUNTER:?} string uses in functions, decompiled into `{}`",
         dirpath.display()
     );
     println!("[+] Done processing binary file `{}`", filepath.display());
