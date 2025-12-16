@@ -141,7 +141,7 @@ pub fn run(filepath: &Path) -> anyhow::Result<usize> {
     println!();
 
     // Print binary file information
-    println!("[-] Processor: {}", idb.processor().long_name(),);
+    println!("[-] Processor: {}", idb.processor().long_name());
     println!("[-] Compiler: {:?}", idb.meta().cc_id());
     println!("[-] File type: {:?}", idb.meta().filetype());
     println!();
