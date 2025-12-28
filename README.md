@@ -3,6 +3,7 @@
 [![](https://img.shields.io/github/stars/0xdea/augur.svg?style=flat&color=yellow)](https://github.com/0xdea/augur)
 [![](https://img.shields.io/crates/v/augur?style=flat&color=green)](https://crates.io/crates/augur)
 [![](https://img.shields.io/crates/d/augur?style=flat&color=red)](https://crates.io/crates/augur)
+[![](https://img.shields.io/badge/ida-9.2-violet)](https://hex-rays.com/ida-pro)
 [![](https://img.shields.io/badge/twitter-%400xdea-blue.svg)](https://twitter.com/0xdea)
 [![](https://img.shields.io/badge/mastodon-%40raptor-purple.svg)](https://infosec.exchange/@raptor)
 [![build](https://github.com/0xdea/augur/actions/workflows/build.yml/badge.svg)](https://github.com/0xdea/augur/actions/workflows/build.yml)
