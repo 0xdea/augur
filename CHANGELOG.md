@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Use idiomatic `anyhow` macros for early returns.
 * Replace `static` with `const` where appropriate.
 * Include `README.md` as the crate documentation to avoid writing it twice.
+* Update copyright notice.
 * Update dependencies.
 
 ### Fixed
