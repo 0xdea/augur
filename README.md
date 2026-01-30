@@ -35,7 +35,7 @@ It stores pseudocode of functions that reference strings in an organized directo
 * <https://github.com/0xdea/rhabdomancer>
 * <https://github.com/0xdea/haruspex>
 * <https://docs.hex-rays.com/release-notes/9_0#headless-processing-with-idalib>
-* <https://github.com/binarly-io/idalib>
+* <https://github.com/idalib-rs/idalib>
 
 ## Installing
 
@@ -98,7 +98,7 @@ Alternatively, you can build from [source](https://github.com/0xdea/augur):
 * IDA Pro 9.1.250226 - Latest compatible: v0.6.2.
 * IDA Pro 9.2.250908 - Latest compatible: current version.
 
-*Note: check [idalib](https://github.com/binarly-io/idalib) documentation for additional information.*
+*Note: check [idalib](https://github.com/idalib-rs/idalib) documentation for additional information.*
 
 ## Changelog
 
