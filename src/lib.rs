@@ -109,7 +109,7 @@ impl IDAString {
             COUNTER.fetch_add(1, Ordering::Relaxed);
         } else {
             // Print only XREF address
-            println!("{:#X} in <unknown>", xref.from());
+            println!("{:#X} in [unknown]", xref.from());
         }
 
         // Process next XREF
