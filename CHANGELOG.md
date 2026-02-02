@@ -18,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Update links to the idalib-rs repository.
 * Update dependencies.
 
+### Fixed
+
+* Replace `<no name>` with `[no name]` to avoid using reserved chars.
+
 ## [0.7.4] - 2025-12-05
 
 ### Changed
