@@ -4,7 +4,6 @@
 use std::fs;
 use std::ops::Deref;
 use std::path::Path;
-use std::sync::atomic::{AtomicUsize, Ordering};
 
 use anyhow::Context;
 use haruspex::{HaruspexError, decompile_to_file};
@@ -22,9 +21,6 @@ const RESERVED_CHARS: &[char] = &['.', '/', '<', '>', ':', '"', '\\', '|', '?', 
 
 /// Maximum length of filenames
 const MAX_FILENAME_LEN: usize = 64;
-
-/// Number of decompiled functions
-static COUNTER: AtomicUsize = AtomicUsize::new(0);
 
 /// IDA string type that holds strings extracted from IDA's string list
 #[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -57,6 +53,7 @@ impl IDAString {
         xref: &XRef,
         addr: Address,
         dirpath: &Path,
+        string_uses_count: &mut usize,
     ) -> Result<(), HaruspexError> {
         // If XREF is in a function, dump the function's pseudocode, otherwise only print its address
         if let Some(f) = idb.function_at(xref.from()) {
@@ -106,7 +103,7 @@ impl IDAString {
                 xref.from(),
                 output_path.display()
             );
-            COUNTER.fetch_add(1, Ordering::Relaxed);
+            *string_uses_count += 1;
         } else {
             // Print only XREF address
             println!("{:#X} in [unknown]", xref.from());
@@ -114,7 +111,11 @@ impl IDAString {
 
         // Process next XREF
         xref.next_to().map_or(Ok(()), |next| {
-            self.traverse_xrefs(idb, &next, addr, dirpath)
+            self.traverse_xrefs(idb, &next, addr, dirpath, string_uses_count)
+                .map_err(|e| {
+                    println!("[X] Failed to process XREF to `{:X}`: {}", xref.from(), e);
+                    e
+                })
         })
     }
 
@@ -159,6 +160,8 @@ pub fn run(filepath: &Path) -> anyhow::Result<usize> {
         .with_context(|| format!("Failed to create directory `{}`", dirpath.display()))?;
     println!("[+] Output directory is ready");
 
+    let mut string_uses_count: usize = 0;
+
     // Locate XREFs to strings in the target binary and dump related pseudocode
     println!();
     println!("[*] Finding cross-references to strings...");
@@ -175,10 +178,10 @@ pub fn run(filepath: &Path) -> anyhow::Result<usize> {
             .context("Failed to get string address")?;
         println!("\n{addr:#X} {:?} ", string.as_ref());
 
-        // Traverse XREFs to string and dump related pseudocode to the output file
+        // Traverse XREFs to string and dump the related pseudocode to the output file
         idb.first_xref_to(addr, XRefQuery::ALL)
             .map_or(Ok::<(), HaruspexError>(()), |xref| {
-                match string.traverse_xrefs(&idb, &xref, addr, &dirpath) {
+                match string.traverse_xrefs(&idb, &xref, addr, &dirpath, &mut string_uses_count) {
                     // Cleanup and return an error if Hex-Rays decompiler license is not available
                     Err(HaruspexError::DecompileFailed(IDAError::HexRays(e)))
                         if e.code() == HexRaysErrorCode::License =>
@@ -196,18 +199,18 @@ pub fn run(filepath: &Path) -> anyhow::Result<usize> {
             })?;
     }
 
-    // Remove the output directory and return an error in case no functions were decompiled
-    if COUNTER.load(Ordering::Relaxed) == 0 {
+    // Remove the output directory and return an error in case no string uses were found
+    if string_uses_count == 0 {
         fs::remove_dir_all(&dirpath)
             .with_context(|| format!("Failed to remove directory `{}`", dirpath.display()))?;
-        anyhow::bail!("No functions were decompiled, check your input file");
+        anyhow::bail!("No string uses were found, check your input file");
     }
 
     println!();
     println!(
-        "[+] Found {COUNTER:?} string uses in functions, decompiled into `{}`",
+        "[+] Found {string_uses_count} string uses in functions, decompiled into `{}`",
         dirpath.display()
     );
     println!("[+] Done processing binary file `{}`", filepath.display());
-    Ok(COUNTER.load(Ordering::Relaxed))
+    Ok(string_uses_count)
 }
