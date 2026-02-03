@@ -108,4 +108,5 @@ Alternatively, you can build from [source](https://github.com/0xdea/augur):
 
 * Integrate with [oneiromancer](https://github.com/0xdea/oneiromancer).
 * Allow users to choose to process string cross-references even if the decompiler is unavailable.
+* Consider converting `traverse_xrefs` to an iterative walk to avoid potential stack overflows and infinite loops.
 * Implement functionality similar to <https://github.com/joxeankoret/idamagicstrings>.
