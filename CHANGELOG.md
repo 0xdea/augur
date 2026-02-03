@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Improve command line parsing, error handling, and usage messages.
 * Replace `<unknown>` with `[unknown]` to avoid using reserved chars.
 * Improve message wording and documentation.
+* Improve doc comments.
 * Update links to the idalib-rs repository.
 * Update dependencies.
 
