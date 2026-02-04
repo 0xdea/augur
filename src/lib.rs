@@ -168,15 +168,14 @@ pub fn run(filepath: &Path) -> anyhow::Result<usize> {
     // Locate XREFs to strings in the target binary and dump related pseudocode
     println!();
     println!("[*] Finding cross-references to strings...");
-    for i in 0..idb.strings().len() {
+    let strings = idb.strings();
+    for i in 0..strings.len() {
         // Extract string with its address
-        let string: IDAString = idb
-            .strings()
+        let string: IDAString = strings
             .get_by_index(i)
             .context("Failed to get string content")?
             .into();
-        let addr = idb
-            .strings()
+        let addr = strings
             .get_address_by_index(i)
             .context("Failed to get string address")?;
         println!("\n{addr:#X} {:?} ", string.as_ref());
