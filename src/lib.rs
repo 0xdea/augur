@@ -55,6 +55,9 @@ impl IDAString {
         dirpath: &Path,
         string_uses_count: &mut usize,
     ) -> Result<(), HaruspexError> {
+        // Filter printable characters in the `IDAString`
+        let string_name = self.filter_printable_chars();
+
         // If XREF is in a function, dump the function's pseudocode, otherwise only print its address
         if let Some(f) = idb.function_at(xref.from()) {
             // Skip the function if it has the `thunk` attribute
@@ -63,7 +66,6 @@ impl IDAString {
             }
 
             // Generate output directory name
-            let string_name = self.filter_printable_chars();
             let output_dir = format!(
                 "_{addr:X}_{}_",
                 string_name
