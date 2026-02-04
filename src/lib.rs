@@ -65,7 +65,7 @@ impl IDAString {
             // Generate output directory name
             let string_name = self.filter_printable_chars();
             let output_dir = format!(
-                "{addr:X}_{}",
+                "_{addr:X}_{}_",
                 string_name
                     .replace(RESERVED_CHARS, "_")
                     .chars()

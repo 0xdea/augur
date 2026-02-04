@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+* Add a `_` prefix/suffix to `output_dir` to address this [issue](https://github.com/0xdea/augur/issues/1).
 * Replace `<no name>` with `[no name]` to avoid using reserved chars.
 
 ## [0.7.4] - 2025-12-05
