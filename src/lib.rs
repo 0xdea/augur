@@ -163,7 +163,7 @@ pub fn run(filepath: &Path) -> anyhow::Result<usize> {
         .with_context(|| format!("Failed to create directory `{}`", dirpath.display()))?;
     println!("[+] Output directory is ready");
 
-    let mut string_uses_count: usize = 0;
+    let mut string_uses_count = 0;
 
     // Locate XREFs to strings in the target binary and dump related pseudocode
     println!();
@@ -171,10 +171,11 @@ pub fn run(filepath: &Path) -> anyhow::Result<usize> {
     let strings = idb.strings();
     for i in 0..strings.len() {
         // Extract string with its address
-        let string: IDAString = strings
-            .get_by_index(i)
-            .context("Failed to get string content")?
-            .into();
+        let string = IDAString::from(
+            strings
+                .get_by_index(i)
+                .context("Failed to get string content")?,
+        );
         let addr = strings
             .get_address_by_index(i)
             .context("Failed to get string address")?;
