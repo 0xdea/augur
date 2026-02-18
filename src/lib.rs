@@ -5,7 +5,7 @@ use std::fs;
 use std::ops::Deref;
 use std::path::Path;
 
-use anyhow::Context;
+use anyhow::Context as _;
 use haruspex::{HaruspexError, decompile_to_file};
 use idalib::decompiler::HexRaysErrorCode;
 use idalib::func::FunctionFlags;
@@ -92,9 +92,7 @@ impl IDAString {
             let output_path = dirpath_sub.join(output_file).with_extension("c");
 
             // Create the output directory if needed
-            if !dirpath_sub.exists() {
-                fs::create_dir(&dirpath_sub)?;
-            }
+            fs::create_dir_all(&dirpath_sub)?;
 
             // Decompile function and write pseudocode to the output file
             decompile_to_file(idb, &f, &output_path)?;
