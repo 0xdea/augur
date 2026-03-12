@@ -1,5 +1,6 @@
 import idaapi
 
+
 class AugurStub(idaapi.plugin_t):
     flags = 0
     comment = "Stub for augur (based on idalib's Rust bindings)"

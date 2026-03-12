@@ -4,18 +4,10 @@
     "name": "augur",
     "entryPoint": "ida-plugin-stub.py",
     "version": "0.8.0",
-    "idaVersions": [
-      "9.0",
-      "9.1",
-      "9.2",
-      "9.3"
-    ],
+    "idaVersions": ["9.0", "9.1", "9.2", "9.3"],
     "description": "Reverse engineering assistant that extracts strings and related pseudocode from a binary file.",
     "license": "MIT",
-    "categories": [
-      "vulnerability-research-and-exploit-development",
-      "decompilation"
-    ],
+    "categories": ["vulnerability-research-and-exploit-development", "decompilation"],
     "urls": {
       "repository": "https://github.com/0xdea/augur",
       "homepage": "https://0xdeadbeef.info/augur/augur/"
@@ -26,13 +18,7 @@
         "email": "raptor@0xdeadbeef.info"
       }
     ],
-    "keywords": [
-      "vulnerability-research",
-      "static-analysis",
-      "security",
-      "idalib",
-      "rust"
-    ],
+    "keywords": ["vulnerability-research", "static-analysis", "security", "idalib", "rust"],
     "logoPath": ".img/logo.png"
   }
 }
