@@ -106,7 +106,7 @@ Alternatively, you can build from [source](https://github.com/0xdea/augur):
 
 ## Changelog
 
-- [CHANGELOG.md](CHANGELOG.md)
+- [CHANGELOG.md](https://github.com/0xdea/haruspex/blob/master/CHANGELOG.md)
 
 ## TODO
 
