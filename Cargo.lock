@@ -402,9 +402,9 @@ checksum = "0cc23270f6e1808e30a928bdc84dea0b9b4136a8bc82338574f23baf47bbd280"
 
 [[package]]
 name = "haruspex"
-version = "0.9.0"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0a585fba67622f08deb66c6a87275abbeecc46800d1cfdf4b3169c86153a7582"
+checksum = "75cb5d8399794d91886ce763965a2dbe60bbcec641e31e47d277a8c20c6f6fe2"
 dependencies = [
  "anyhow",
  "idalib",
