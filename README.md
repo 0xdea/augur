@@ -82,11 +82,12 @@ Alternatively, you can build from [source](https://github.com/0xdea/augur):
 ## Usage
 
 1. Make sure IDA Pro is properly configured with a valid license.
-2. Run as follows:
+2. Make sure the `IDADIR` environment variable is set if your IDA Pro installation is in a non-standard location.
+3. Run as follows:
    ```sh
    augur <binary_file>
    ```
-3. Find the extracted pseudocode of each decompiled function in the `binary_file.str` directory, organized by string:
+4. Find the extracted pseudocode of each decompiled function in the `binary_file.str` directory, organized by string:
    ```sh
    vim <binary_file>.str
    code <binary_file>.str
