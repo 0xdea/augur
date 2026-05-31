@@ -26,6 +26,49 @@ const MAX_FILENAME_LEN: usize = 64;
 #[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 struct IDAString(String);
 
+impl IDAString {
+    /// Iteratively traverse XREFs and dump related pseudocode to the output file
+    fn traverse_xrefs(
+        &self,
+        idb: &IDB,
+        first_xref: XRef,
+        addr: Address,
+        dirpath: &Path,
+        string_uses_count: &mut usize,
+    ) -> Result<(), HaruspexError> {
+        let string_name = self.filter_printable_chars();
+        let dirpath_sub = dirpath.join(format!("_{addr:X}_{}_", sanitize_name(&string_name)));
+
+        let mut current = Some(first_xref);
+
+        while let Some(xref) = current {
+            let from = xref.from();
+
+            // If XREF is in a function, dump the function's pseudocode, otherwise only print its address
+            if let Some(f) = idb.function_at(from) {
+                // Skip the function if it has the `thunk` attribute
+                if !f.flags().contains(FunctionFlags::THUNK) {
+                    decompile_function(idb, &f, from, &dirpath_sub)?;
+                    *string_uses_count += 1;
+                }
+            } else {
+                // Print only XREF address
+                println!("{from:#X} in [unknown]");
+            }
+            current = xref.next_to();
+        }
+
+        Ok(())
+    }
+
+    /// Take an `IDAString` as input and return a `String` that contains only its printable chars
+    fn filter_printable_chars(&self) -> String {
+        self.chars()
+            .filter(|c| c.is_ascii_graphic() || *c == ' ')
+            .collect()
+    }
+}
+
 impl AsRef<str> for IDAString {
     fn as_ref(&self) -> &str {
         &self.0
@@ -42,79 +85,6 @@ impl Deref for IDAString {
 impl From<String> for IDAString {
     fn from(value: String) -> Self {
         Self(value)
-    }
-}
-
-impl IDAString {
-    /// Iteratively traverse XREFs and dump related pseudocode to the output file
-    fn traverse_xrefs(
-        &self,
-        idb: &IDB,
-        first_xref: XRef,
-        addr: Address,
-        dirpath: &Path,
-        string_uses_count: &mut usize,
-    ) -> Result<(), HaruspexError> {
-        // Compute invariants once for all XREFs to this string
-        let string_name = self.filter_printable_chars();
-        let output_dir = format!(
-            "_{addr:X}_{}_",
-            string_name
-                .replace(RESERVED_CHARS, "_")
-                .chars()
-                .take(MAX_FILENAME_LEN)
-                .collect::<String>()
-        );
-        let dirpath_sub = dirpath.join(output_dir);
-
-        let mut current = Some(first_xref);
-
-        while let Some(xref) = current {
-            let from = xref.from();
-
-            // If XREF is in a function, dump the function's pseudocode, otherwise only print its address
-            if let Some(f) = idb.function_at(from) {
-                // Skip the function if it has the `thunk` attribute
-                if !f.flags().contains(FunctionFlags::THUNK) {
-                    // Generate output file name
-                    let func_name = f.name().unwrap_or_else(|| "[no name]".into());
-                    let output_file = format!(
-                        "{}@{:X}",
-                        func_name
-                            .replace(RESERVED_CHARS, "_")
-                            .chars()
-                            .take(MAX_FILENAME_LEN)
-                            .collect::<String>(),
-                        f.start_address()
-                    );
-
-                    // Generate the output path and create the output directory if needed
-                    let output_path = dirpath_sub.join(output_file).with_extension("c");
-                    fs::create_dir_all(&dirpath_sub)?;
-
-                    // Decompile function and write pseudocode to the output file
-                    decompile_to_file(idb, &f, &output_path)?;
-
-                    // Print XREF address, function name, and output path in case of successful decompilation
-                    println!("{:#X} in {func_name} -> `{}`", from, output_path.display());
-                    *string_uses_count += 1;
-                }
-            } else {
-                // Print only XREF address
-                println!("{from:#X} in [unknown]");
-            }
-
-            current = xref.next_to();
-        }
-
-        Ok(())
-    }
-
-    /// Take an `IDAString` as input and return a `String` that contains only its printable chars
-    fn filter_printable_chars(&self) -> String {
-        self.chars()
-            .filter(|c| c.is_ascii_graphic() || *c == ' ')
-            .collect()
     }
 }
 
@@ -206,4 +176,40 @@ pub fn run(filepath: &Path) -> anyhow::Result<usize> {
     );
     println!("[+] Done processing binary file `{}`", filepath.display());
     Ok(string_uses_count)
+}
+
+/// Decompile `f` into `dirpath` and print the result path on success
+fn decompile_function(
+    idb: &IDB,
+    f: &idalib::func::Function<'_>,
+    from: Address,
+    dirpath: &Path,
+) -> Result<(), HaruspexError> {
+    // Generate the output path
+    let func_name = f.name().unwrap_or_else(|| "[no name]".into());
+    let output_path = dirpath
+        .join(format!(
+            "{}@{:X}",
+            sanitize_name(&func_name),
+            f.start_address()
+        ))
+        .with_extension("c");
+
+    // Create the output directory if needed
+    fs::create_dir_all(dirpath)?;
+
+    // Decompile function and write pseudocode to the output file
+    decompile_to_file(idb, f, &output_path)?;
+
+    // Print XREF address, function name, and output path in case of successful decompilation
+    println!("{from:#X} in {func_name} -> `{}`", output_path.display());
+    Ok(())
+}
+
+/// Strip reserved filename characters and cap length at `MAX_FILENAME_LEN`
+fn sanitize_name(s: &str) -> String {
+    s.replace(RESERVED_CHARS, "_")
+        .chars()
+        .take(MAX_FILENAME_LEN)
+        .collect()
 }
