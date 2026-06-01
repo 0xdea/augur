@@ -73,7 +73,7 @@ Workspace lints in `Cargo.toml` are strict: `unwrap_used`, `expect_used`, `panic
 
 ## Tests
 
-**Unit tests** (`src/lib.rs`, `#[cfg(test)]`): cover `IDAString::filter_printable_chars` — no IDA required, run with `cargo test --lib`.
+**Unit tests** (`src/lib.rs`, `#[cfg(test)]`): cover `IDAString::filter_printable_chars` — no IDA required, run with `cargo test --lib`. Only executed in CI on Linux; macOS and Windows cannot run them because `dyld`/the Windows loader requires all linked dylibs (including `libida`) to be present at process startup, whereas Linux's lazy binding allows the test binary to start without resolving IDA symbols.
 
 **Integration test** (`tests/main.rs`): custom harness that runs against `tests/data/ls` (a real Linux `ls` binary) and asserts:
 - Exactly 27 decompiled string uses
