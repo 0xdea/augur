@@ -6,21 +6,15 @@ use std::ops::Deref;
 use std::path::Path;
 
 use anyhow::Context as _;
-use haruspex::{HaruspexError, decompile_to_file};
+use haruspex::{
+    HaruspexError, decompile_to_file, output_path_for_function, prepare_output_dir,
+    sanitize_filename,
+};
 use idalib::decompiler::HexRaysErrorCode;
-use idalib::func::FunctionFlags;
+use idalib::func::{Function, FunctionFlags};
 use idalib::idb::IDB;
 use idalib::xref::{XRef, XRefQuery};
 use idalib::{Address, IDAError};
-
-/// Reserved characters in filenames
-#[cfg(unix)]
-const RESERVED_CHARS: &[char] = &['.', '/'];
-#[cfg(windows)]
-const RESERVED_CHARS: &[char] = &['.', '/', '<', '>', ':', '"', '\\', '|', '?', '*'];
-
-/// Maximum length of filenames
-const MAX_FILENAME_LEN: usize = 64;
 
 /// IDA string type that holds strings extracted from IDA's string list
 #[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -28,6 +22,11 @@ struct IDAString(String);
 
 impl IDAString {
     /// Iteratively traverse XREFs and dump related pseudocode to the output file
+    ///
+    /// ## Errors
+    ///
+    /// Returns an error if the output file cannot be created, the function cannot be decompiled, or if the Hex-Rays
+    /// decompiler license is not available for the target binary.
     fn traverse_xrefs(
         &self,
         idb: &IDB,
@@ -37,7 +36,7 @@ impl IDAString {
         string_uses_count: &mut usize,
     ) -> Result<(), HaruspexError> {
         let string_name = self.filter_printable_chars();
-        let dirpath_sub = dirpath.join(format!("_{addr:X}_{}_", sanitize_name(&string_name)));
+        let dirpath_sub = dirpath.join(format!("_{addr:X}_{}_", sanitize_filename(&string_name)));
 
         let mut current = Some(first_xref);
 
@@ -48,7 +47,7 @@ impl IDAString {
             if let Some(f) = idb.function_at(from) {
                 // Skip the function if it has the `thunk` attribute
                 if !f.flags().contains(FunctionFlags::THUNK) {
-                    decompile_function(idb, &f, from, &dirpath_sub)?;
+                    dump_function_pseudocode(idb, &f, from, &dirpath_sub)?;
                     *string_uses_count += 1;
                 }
             } else {
@@ -114,14 +113,7 @@ pub fn run(filepath: &Path) -> anyhow::Result<usize> {
 
     // Create a new output directory, returning an error if it already exists, and it's not empty
     let dirpath = filepath.with_extension("str");
-    println!("[*] Preparing output directory `{}`", dirpath.display());
-    if dirpath.exists() {
-        fs::remove_dir(&dirpath)
-            .with_context(|| format!("Output directory `{}` already exists", dirpath.display()))?;
-    }
-    fs::create_dir_all(&dirpath)
-        .with_context(|| format!("Failed to create directory `{}`", dirpath.display()))?;
-    println!("[+] Output directory is ready");
+    prepare_output_dir(&dirpath)?;
 
     let mut string_uses_count = 0;
 
@@ -178,38 +170,75 @@ pub fn run(filepath: &Path) -> anyhow::Result<usize> {
     Ok(string_uses_count)
 }
 
-/// Decompile `f` into `dirpath` and print the result path on success
-fn decompile_function(
+/// Dump pseudocode of `func` into `dirpath` and print XREF address, function name, and output path on success
+///
+/// ## Errors
+///
+/// Returns an error if the output file cannot be created or the function cannot be decompiled.
+fn dump_function_pseudocode(
     idb: &IDB,
-    f: &idalib::func::Function<'_>,
+    func: &Function,
     from: Address,
     dirpath: &Path,
 ) -> Result<(), HaruspexError> {
-    // Generate the output path
-    let func_name = f.name().unwrap_or_else(|| "[no name]".into());
-    let output_path = dirpath
-        .join(format!(
-            "{}@{:X}",
-            sanitize_name(&func_name),
-            f.start_address()
-        ))
-        .with_extension("c");
+    // Build the output file path
+    let func_name = func.name().unwrap_or_else(|| "[no name]".into());
+    let output_path = output_path_for_function(func, dirpath);
 
     // Create the output directory if needed
     fs::create_dir_all(dirpath)?;
 
     // Decompile function and write pseudocode to the output file
-    decompile_to_file(idb, f, &output_path)?;
+    decompile_to_file(idb, func, &output_path)?;
 
     // Print XREF address, function name, and output path in case of successful decompilation
     println!("{from:#X} in {func_name} -> `{}`", output_path.display());
     Ok(())
 }
 
-/// Strip reserved filename characters and cap length at `MAX_FILENAME_LEN`
-fn sanitize_name(s: &str) -> String {
-    s.replace(RESERVED_CHARS, "_")
-        .chars()
-        .take(MAX_FILENAME_LEN)
-        .collect()
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn filter_keeps_ascii_graphic() {
+        let s = IDAString::from("hello!@#$%^&*()".to_owned());
+        assert_eq!(s.filter_printable_chars(), "hello!@#$%^&*()");
+    }
+
+    #[test]
+    fn filter_keeps_space() {
+        let s = IDAString::from("hello world".to_owned());
+        assert_eq!(s.filter_printable_chars(), "hello world");
+    }
+
+    #[test]
+    fn filter_strips_control_chars() {
+        let s = IDAString::from("hel\x00lo\x01\x1f".to_owned());
+        assert_eq!(s.filter_printable_chars(), "hello");
+    }
+
+    #[test]
+    fn filter_strips_nul_bytes() {
+        let s = IDAString::from("foo\x00bar".to_owned());
+        assert_eq!(s.filter_printable_chars(), "foobar");
+    }
+
+    #[test]
+    fn filter_strips_non_ascii() {
+        let s = IDAString::from("caf\u{00e9}".to_owned());
+        assert_eq!(s.filter_printable_chars(), "caf");
+    }
+
+    #[test]
+    fn filter_empty_string() {
+        let s = IDAString::from(String::new());
+        assert_eq!(s.filter_printable_chars(), "");
+    }
+
+    #[test]
+    fn filter_all_non_printable() {
+        let s = IDAString::from("\x00\x01\x02\x03".to_owned());
+        assert_eq!(s.filter_printable_chars(), "");
+    }
 }

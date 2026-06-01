@@ -7,9 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add unit tests for helper functions.
+
 ### Changed
 
-- Extract `decompile_function` and `sanitize_name` helper functions.
+- Extract `dump_function_pseudocode` helper function.
+- Use the new helper functions exported by hauruspex 0.9.3 to simplify the codebase.
 - Use workspace lints and add some lints in the `clippy::restriction` category.
 - Improve documentation.
 - Update dependencies.
