@@ -54,6 +54,19 @@ fn main() -> anyhow::Result<()> {
     );
     println!("Ok.");
 
+    // Spot-check a known output file: verify the naming scheme and that decompilation produced output
+    print!("[*] Checking known output file exists and is non-empty... ");
+    let known_file = dirpath
+        .join("_905C_write error_")
+        .join("sub_4AD0@4AD0.c");
+    assert!(known_file.is_file(), "expected output file missing: {}", known_file.display());
+    assert!(
+        known_file.metadata()?.len() > 0,
+        "output file is empty: {}",
+        known_file.display()
+    );
+    println!("Ok.");
+
     // Remove the output directory at the end
     if dirpath.exists() {
         fs::remove_dir_all(&dirpath)?;
