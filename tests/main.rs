@@ -5,38 +5,38 @@ use std::path::Path;
 
 use walkdir::WalkDir;
 
-/// Custom harness for integration tests
+/// Custom harness for integration tests.
 fn main() -> anyhow::Result<()> {
-    // Target binary path
+    // Target binary path.
     const FILENAME: &str = "./tests/data/ls";
-    // Expected number of string uses in functions
+    // Expected number of string uses in functions.
     const N_USES: usize = 27;
-    // Expected number of subdirectories
+    // Expected number of subdirectories.
     const N_SUBDIRS: usize = 26;
-    // Expected number of files in the output directory and all subdirectories
+    // Expected number of files in the output directory and all subdirectories.
     const N_FILES: usize = N_USES + N_SUBDIRS + 1;
 
-    // Remove the IDB file if it exists
+    // Remove the IDB file if it exists.
     let idb_path = Path::new(FILENAME).with_extension("i64");
     if idb_path.is_file() {
         fs::remove_file(idb_path)?;
     }
 
-    // Remove the output directory if it exists
+    // Remove the output directory if it exists.
     let filepath = Path::new(FILENAME);
     let dirpath = filepath.with_extension("str");
     if dirpath.exists() {
         fs::remove_dir_all(&dirpath)?;
     }
 
-    // Run augur and check the number of string uses in functions
+    // Run augur and check the number of string uses in functions.
     let n_decomp = augur::run(Path::new(FILENAME))?;
     println!();
     print!("[*] Checking number of string uses in functions... ");
     assert_eq!(n_decomp, N_USES, "wrong number of string uses");
     println!("Ok.");
 
-    // Check the number of created subdirectories in the output directory
+    // Check the number of created subdirectories in the output directory.
     print!("[*] Checking number of subdirectories in output directory... ");
     assert_eq!(
         dirpath.read_dir()?.count(),
@@ -45,7 +45,7 @@ fn main() -> anyhow::Result<()> {
     );
     println!("Ok.");
 
-    // Check the number of created files in the output directory and all subdirectories
+    // Check the number of created files in the output directory and all subdirectories.
     print!("[*] Checking number of files in output directory and all subdirectories... ");
     assert_eq!(
         WalkDir::new(&dirpath).into_iter().count(),
@@ -54,7 +54,7 @@ fn main() -> anyhow::Result<()> {
     );
     println!("Ok.");
 
-    // Spot-check a known output file: verify the naming scheme and that decompilation produced output
+    // Spot-check a known output file: verify the naming scheme and that decompilation produced output.
     print!("[*] Checking known output file exists and is non-empty... ");
     let known_file = dirpath.join("_905C_write error_").join("sub_4AD0@4AD0.c");
     assert!(
@@ -69,7 +69,7 @@ fn main() -> anyhow::Result<()> {
     );
     println!("Ok.");
 
-    // Remove the output directory at the end
+    // Remove the output directory at the end.
     if dirpath.exists() {
         fs::remove_dir_all(&dirpath)?;
     }

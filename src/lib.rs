@@ -16,12 +16,12 @@ use idalib::idb::IDB;
 use idalib::xref::{XRef, XRefQuery};
 use idalib::{Address, IDAError};
 
-/// IDA string type that holds strings extracted from IDA's string list
+/// IDA string type that holds strings extracted from IDA's string list.
 #[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 struct IDAString(String);
 
 impl IDAString {
-    /// Iteratively traverse XREFs and dump related pseudocode to the output file
+    /// Iteratively traverses XREFs and dumps related pseudocode to the output file.
     ///
     /// ## Errors
     ///
@@ -43,15 +43,15 @@ impl IDAString {
         while let Some(xref) = current {
             let from = xref.from();
 
-            // If XREF is in a function, dump the function's pseudocode, otherwise only print its address
+            // If XREF is in a function, dump the function's pseudocode, otherwise only print its address.
             if let Some(f) = idb.function_at(from) {
-                // Skip the function if it has the `thunk` attribute
+                // Skip the function if it has the `thunk` attribute.
                 if !f.flags().contains(FunctionFlags::THUNK) {
                     dump_function_pseudocode(idb, &f, from, &dirpath_sub)?;
                     *string_uses_count += 1;
                 }
             } else {
-                // Print only XREF address
+                // Print only XREF address.
                 println!("{from:#X} in [unknown]");
             }
             current = xref.next_to();
@@ -60,7 +60,7 @@ impl IDAString {
         Ok(())
     }
 
-    /// Take an `IDAString` as input and return a `String` that contains only its printable chars
+    /// Takes an `IDAString` as input and returns a `String` that contains only its printable chars.
     fn filter_printable_chars(&self) -> String {
         self.chars()
             .filter(|c| c.is_ascii_graphic() || *c == ' ')
@@ -87,37 +87,37 @@ impl From<String> for IDAString {
     }
 }
 
-/// Extract strings and pseudocode of each function that references them from the binary at
-/// `filepath` and save them in `filepath.str`.
+/// Extracts strings and pseudocode of each function that references them from the binary at
+/// `filepath` and saves them in `filepath.str`.
 ///
 /// ## Errors
 ///
 /// Returns the number of locations where strings are referenced, or an error in case something
 /// goes wrong.
 pub fn run(filepath: &Path) -> anyhow::Result<usize> {
-    // Open the target binary and run auto-analysis
+    // Open the target binary and run auto-analysis.
     println!("[*] Analyzing binary file `{}`", filepath.display());
     let idb = IDB::open(filepath)
         .with_context(|| format!("Failed to analyze binary file `{}`", filepath.display()))?;
     println!("[+] Successfully analyzed binary file");
     println!();
 
-    // Print binary file information
+    // Print binary file information.
     println!("[-] Processor: {}", idb.processor().long_name());
     println!("[-] Compiler: {:?}", idb.meta().cc_id());
     println!("[-] File type: {:?}", idb.meta().filetype());
     println!();
 
-    // Ensure Hex-Rays decompiler is available
+    // Ensure Hex-Rays decompiler is available.
     anyhow::ensure!(idb.decompiler_available(), "Decompiler is not available");
 
-    // Create a new output directory, returning an error if it already exists, and it's not empty
+    // Create a new output directory, returning an error if it already exists, and it's not empty.
     let dirpath = filepath.with_extension("str");
     prepare_output_dir(&dirpath)?;
 
     let mut string_uses_count = 0;
 
-    // Locate XREFs to strings in the target binary and dump related pseudocode
+    // Locate XREFs to strings in the target binary and dump related pseudocode.
     println!();
     println!("[*] Finding cross-references to strings...");
     let strings = idb.strings();
@@ -133,11 +133,11 @@ pub fn run(filepath: &Path) -> anyhow::Result<usize> {
             .context("Failed to get string address")?;
         println!("\n{addr:#X} {:?} ", string.as_ref());
 
-        // Traverse XREFs to string and dump the related pseudocode to the output file
+        // Traverse XREFs to string and dump the related pseudocode to the output file.
         idb.first_xref_to(addr, XRefQuery::ALL)
             .map_or(Ok::<(), HaruspexError>(()), |xref| {
                 match string.traverse_xrefs(&idb, xref, addr, &dirpath, &mut string_uses_count) {
-                    // Cleanup and return an error if Hex-Rays decompiler license is not available
+                    // Cleanup and return an error if Hex-Rays decompiler license is not available.
                     Err(HaruspexError::DecompileFailed(IDAError::HexRays(e)))
                         if e.code() == HexRaysErrorCode::License =>
                     {
@@ -145,16 +145,16 @@ pub fn run(filepath: &Path) -> anyhow::Result<usize> {
                         Err(IDAError::HexRays(e).into())
                     }
 
-                    // Ignore other IDA errors and do nothing when XREF processing is finished
+                    // Ignore other IDA errors and do nothing when XREF processing is finished.
                     Err(HaruspexError::DecompileFailed(_)) | Ok(()) => Ok(()),
 
-                    // Return any other error
+                    // Return any other error.
                     Err(e) => Err(e),
                 }
             })?;
     }
 
-    // Remove the output directory and return an error in case no string uses were found
+    // Remove the output directory and return an error in case no string uses were found.
     if string_uses_count == 0 {
         fs::remove_dir_all(&dirpath)
             .with_context(|| format!("Failed to remove directory `{}`", dirpath.display()))?;
@@ -170,7 +170,7 @@ pub fn run(filepath: &Path) -> anyhow::Result<usize> {
     Ok(string_uses_count)
 }
 
-/// Dump pseudocode of `func` into `dirpath` and print XREF address, function name, and output path on success
+/// Dumps pseudocode of `func` into `dirpath` and prints XREF address, function name, and output path on success.
 ///
 /// ## Errors
 ///
@@ -181,17 +181,17 @@ fn dump_function_pseudocode(
     from: Address,
     dirpath: &Path,
 ) -> Result<(), HaruspexError> {
-    // Build the output file path
+    // Build the output file path.
     let func_name = func.name().unwrap_or_else(|| "[no name]".into());
     let output_path = output_path_for_function(func, dirpath);
 
-    // Create the output directory if needed
+    // Create the output directory if needed.
     fs::create_dir_all(dirpath)?;
 
-    // Decompile function and write pseudocode to the output file
+    // Decompile function and write pseudocode to the output file.
     decompile_to_file(idb, func, &output_path)?;
 
-    // Print XREF address, function name, and output path in case of successful decompilation
+    // Print XREF address, function name, and output path in case of successful decompilation.
     println!("{from:#X} in {func_name} -> `{}`", output_path.display());
     Ok(())
 }
