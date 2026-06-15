@@ -94,11 +94,18 @@ impl From<String> for IDAString {
 ///
 /// Returns the number of locations where strings are referenced, or an error in case something
 /// goes wrong.
-pub fn run(filepath: &Path) -> anyhow::Result<usize> {
+pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
     // Open the target binary and run auto-analysis.
-    println!("[*] Analyzing binary file `{}`", filepath.display());
-    let idb = IDB::open(filepath)
-        .with_context(|| format!("Failed to analyze binary file `{}`", filepath.display()))?;
+    println!(
+        "[*] Analyzing binary file `{}`",
+        filepath.as_ref().display()
+    );
+    let idb = IDB::open(&filepath).with_context(|| {
+        format!(
+            "Failed to analyze binary file `{}`",
+            filepath.as_ref().display()
+        )
+    })?;
     println!("[+] Successfully analyzed binary file");
     println!();
 
@@ -112,7 +119,7 @@ pub fn run(filepath: &Path) -> anyhow::Result<usize> {
     anyhow::ensure!(idb.decompiler_available(), "Decompiler is not available");
 
     // Create a new output directory, returning an error if it already exists, and it's not empty.
-    let dirpath = filepath.with_extension("str");
+    let dirpath = filepath.as_ref().with_extension("str");
     prepare_output_dir(&dirpath)?;
 
     let mut string_uses_count = 0;
@@ -166,7 +173,10 @@ pub fn run(filepath: &Path) -> anyhow::Result<usize> {
         "[+] Found {string_uses_count} string uses in functions, decompiled into `{}`",
         dirpath.display()
     );
-    println!("[+] Done processing binary file `{}`", filepath.display());
+    println!(
+        "[+] Done processing binary file `{}`",
+        filepath.as_ref().display()
+    );
     Ok(string_uses_count)
 }
 
