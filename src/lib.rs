@@ -23,10 +23,10 @@ struct IDAString(String);
 impl IDAString {
     /// Iteratively traverses XREFs and dumps related pseudocode to the output file.
     ///
-    /// ## Errors
+    /// # Errors
     ///
-    /// Returns an error if the output file cannot be created, the function cannot be decompiled, or if the Hex-Rays
-    /// decompiler license is not available for the target binary.
+    /// Returns the appropriate [`HaruspexError`] if the output file cannot be created, the function cannot be
+    /// decompiled, or if the Hex-Rays decompiler license is not available for the target binary.
     fn traverse_xrefs(
         &self,
         idb: &IDB,
@@ -60,7 +60,7 @@ impl IDAString {
         Ok(())
     }
 
-    /// Takes an `IDAString` as input and returns a `String` that contains only its printable chars.
+    /// Takes an [`IDAString`] as input and returns a [`String`] that contains only its printable chars.
     fn filter_printable_chars(&self) -> String {
         self.chars()
             .filter(|c| c.is_ascii_graphic() || *c == ' ')
@@ -90,10 +90,11 @@ impl From<String> for IDAString {
 /// Extracts strings and pseudocode of each function that references them from the binary at
 /// `filepath` and saves them in `filepath.str`.
 ///
-/// ## Errors
+/// Returns the number of locations where strings are referenced.
 ///
-/// Returns the number of locations where strings are referenced, or an error in case something
-/// goes wrong.
+/// # Errors
+///
+/// Returns [`anyhow::Error`] in case something goes wrong with analyzing the binary file or decompiling functions.
 pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
     // Open the target binary and run auto-analysis.
     println!(
@@ -182,9 +183,9 @@ pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
 
 /// Dumps pseudocode of `func` into `dirpath` and prints XREF address, function name, and output path on success.
 ///
-/// ## Errors
+/// # Errors
 ///
-/// Returns an error if the output file cannot be created or the function cannot be decompiled.
+/// Returns [`HaruspexError`] if the output file cannot be created or the function cannot be decompiled.
 fn dump_function_pseudocode(
     idb: &IDB,
     func: &Function,
