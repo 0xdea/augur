@@ -1,4 +1,6 @@
-#![doc = include_str!("../README.md")]
+#![doc = env!("CARGO_PKG_DESCRIPTION")]
+#![doc = ""]
+#![cfg_attr(doc, doc = include_str!("../README.md"))]
 #![doc(html_logo_url = "https://raw.githubusercontent.com/0xdea/augur/master/.img/logo.png")]
 
 use std::fs;
@@ -27,6 +29,10 @@ impl IDAString {
     ///
     /// Returns the appropriate [`HaruspexError`] if the output file cannot be created, the function cannot be
     /// decompiled, or if the Hex-Rays decompiler license is not available for the target binary.
+    #[expect(
+        clippy::arithmetic_side_effects,
+        reason = "`usize` can hardly overflow here"
+    )]
     fn traverse_xrefs(
         &self,
         idb: &IDB,

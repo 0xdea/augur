@@ -69,7 +69,7 @@ This is a **single-crate project** — no workspace, just `src/main.rs` (CLI ent
 
 ## Lint policy
 
-Workspace lints in `Cargo.toml` are strict: `unwrap_used`, `expect_used`, `panic`, `todo`, `unimplemented`, and similar restriction lints are all denied. Use `anyhow`/`?` for error propagation and `Option` combinators instead.
+All clippy lint groups (`all`, `pedantic`, `nursery`, `cargo`, `restriction`) are enabled as warnings in `Cargo.toml` and treated as errors by `cargo clippy -- -D warnings`. A small set of restriction lints are explicitly allowed (e.g. `implicit_return`, `question_mark_used`, `print_stdout`). Use `anyhow`/`?` for error propagation and `Option` combinators instead of `unwrap`/`expect`. When a restriction lint must be suppressed, use `#[expect(..., reason = "...")]` rather than `#[allow(...)]`.
 
 ## Tests
 

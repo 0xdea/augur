@@ -1,4 +1,4 @@
-//! tests/main.rs
+//! tests/main.rs.
 
 use std::fs;
 use std::path::Path;
@@ -6,6 +6,7 @@ use std::path::Path;
 use walkdir::WalkDir;
 
 /// Custom harness for integration tests.
+#[expect(clippy::panic_in_result_fn, reason = "panics are allowed in test code")]
 fn main() -> anyhow::Result<()> {
     // Target binary path.
     const FILENAME: &str = "./tests/data/ls";
