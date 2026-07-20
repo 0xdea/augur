@@ -20,7 +20,7 @@ It stores pseudocode of functions that reference strings in an organized directo
 
 ## Features
 
-- Blazing fast, headless user experience courtesy of IDA Pro 9.x and Binarly's idalib Rust bindings.
+- Blazing fast, headless user experience courtesy of IDA Pro 9.x and idalib-rs Rust bindings.
 - Support for binary targets for any architecture implemented by IDA Pro's Hex-Rays decompiler.
 - Decompilation feature based on the `decompile_to_file` API exported by [haruspex](https://github.com/0xdea/haruspex).
 - Pseudocode of each function that references a specific string is stored in a separate directory.
@@ -108,11 +108,11 @@ summarizes the latest compatible release for each IDA Pro version:
 | v9.3.260421     | current release           |
 
 > [!NOTE]
-> Check the [idalib](https://github.com/idalib-rs/idalib) documentation for additional information.
+> Check the [idalib-rs](https://github.com/idalib-rs/idalib) documentation for additional information.
 
 ## Credits
 
-This project's development has been supported by the following organisations:
+This project's development has been supported by the following organizations:
 
 - [HN Security](https://hnsecurity.it)
 - [Hex-Rays](https://hex-rays.com) via their [Contributor Program](https://hex-rays.com/contributor-program)
