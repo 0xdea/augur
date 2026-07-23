@@ -218,44 +218,72 @@ mod tests {
     use super::*;
 
     #[test]
-    fn filter_keeps_ascii_graphic() {
+    fn filter_printable_chars_keeps_ascii_graphic_chars() {
         let s = IDAString::from("hello!@#$%^&*()".to_owned());
-        assert_eq!(s.filter_printable_chars(), "hello!@#$%^&*()");
+        assert_eq!(
+            s.filter_printable_chars(),
+            "hello!@#$%^&*()",
+            "ascii graphic chars should be kept"
+        );
     }
 
     #[test]
-    fn filter_keeps_space() {
+    fn filter_printable_chars_keeps_space() {
         let s = IDAString::from("hello world".to_owned());
-        assert_eq!(s.filter_printable_chars(), "hello world");
+        assert_eq!(
+            s.filter_printable_chars(),
+            "hello world",
+            "space should be kept"
+        );
     }
 
     #[test]
-    fn filter_strips_control_chars() {
+    fn filter_printable_chars_strips_control_chars() {
         let s = IDAString::from("hel\x00lo\x01\x1f".to_owned());
-        assert_eq!(s.filter_printable_chars(), "hello");
+        assert_eq!(
+            s.filter_printable_chars(),
+            "hello",
+            "control chars should be stripped"
+        );
     }
 
     #[test]
-    fn filter_strips_nul_bytes() {
+    fn filter_printable_chars_strips_nul_bytes() {
         let s = IDAString::from("foo\x00bar".to_owned());
-        assert_eq!(s.filter_printable_chars(), "foobar");
+        assert_eq!(
+            s.filter_printable_chars(),
+            "foobar",
+            "nul bytes should be stripped"
+        );
     }
 
     #[test]
-    fn filter_strips_non_ascii() {
+    fn filter_printable_chars_strips_non_ascii() {
         let s = IDAString::from("caf\u{00e9}".to_owned());
-        assert_eq!(s.filter_printable_chars(), "caf");
+        assert_eq!(
+            s.filter_printable_chars(),
+            "caf",
+            "non-ascii chars should be stripped"
+        );
     }
 
     #[test]
-    fn filter_empty_string() {
+    fn filter_printable_chars_on_empty_string_produces_empty_string() {
         let s = IDAString::from(String::new());
-        assert_eq!(s.filter_printable_chars(), "");
+        assert_eq!(
+            s.filter_printable_chars(),
+            "",
+            "empty input should produce empty output"
+        );
     }
 
     #[test]
-    fn filter_all_non_printable() {
+    fn filter_printable_chars_on_all_non_printable_chars_produces_empty_string() {
         let s = IDAString::from("\x00\x01\x02\x03".to_owned());
-        assert_eq!(s.filter_printable_chars(), "");
+        assert_eq!(
+            s.filter_printable_chars(),
+            "",
+            "all non-printable chars should produce empty string"
+        );
     }
 }

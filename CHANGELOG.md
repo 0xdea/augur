@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enable all clippy restriction lints and fix any resulting issues.
 - Add credits section to README.
 - Improve comments.
+- Improve unit tests.
 - Improve CI.
 - Update dependencies.
 
