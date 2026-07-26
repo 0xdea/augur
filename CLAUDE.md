@@ -22,6 +22,12 @@ cargo test --test tests
 cargo fmt --all --check
 cargo clippy --all-targets -- -D warnings
 
+# Check for known-vulnerable dependencies
+cargo audit
+
+# Check docs build cleanly (CI treats warnings as errors here too)
+RUSTDOCFLAGS="-D warnings" cargo doc --no-deps
+
 # Check semver compatibility
 cargo semver-checks
 ```
@@ -42,7 +48,7 @@ This is a **single-crate project** — no workspace, just `src/main.rs` (CLI ent
 
 - **`dump_function_pseudocode(idb, func, from, dirpath)`**: Free function that builds the output path via `haruspex::output_path_for_function`, creates the subdirectory, decompiles to file, and prints the result.
 
-- **`run(filepath: &Path) -> anyhow::Result<usize>`**: Public entry point. Opens the binary via `IDB::open()`, calls `haruspex::prepare_output_dir()` to set up the `<binary>.str/` directory, iterates all strings, dispatches `traverse_xrefs()` for each, returns the total decompiled use count.
+- **`run(filepath: impl AsRef<Path>) -> anyhow::Result<usize>`**: Public entry point. Opens the binary via `IDB::open()`, calls `haruspex::prepare_output_dir()` to set up the `<binary>.str/` directory, iterates all strings, dispatches `traverse_xrefs()` for each, returns the total decompiled use count.
 
 ### Output layout
 
