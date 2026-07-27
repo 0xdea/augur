@@ -3,7 +3,7 @@
 [![](https://img.shields.io/github/stars/0xdea/augur.svg?style=flat&color=yellow)](https://github.com/0xdea/augur)
 [![](https://img.shields.io/crates/v/augur?style=flat&color=green)](https://crates.io/crates/augur)
 [![](https://img.shields.io/crates/d/augur?style=flat&color=red)](https://crates.io/crates/augur)
-[![](https://img.shields.io/badge/ida-9.3-violet)](https://hex-rays.com/ida-pro)
+[![](https://img.shields.io/badge/ida-9.4-violet)](https://hex-rays.com/ida-pro)
 [![](https://img.shields.io/badge/twitter-%400xdea-blue.svg)](https://twitter.com/0xdea)
 [![](https://img.shields.io/badge/mastodon-%40raptor-purple.svg)](https://infosec.exchange/@raptor)
 [![build](https://github.com/0xdea/augur/actions/workflows/build.yml/badge.svg)](https://github.com/0xdea/augur/actions/workflows/build.yml)
@@ -105,7 +105,8 @@ summarizes the latest compatible release for each IDA Pro version:
 | v9.2.250908     | v0.7.5                    |
 | v9.3.260213     | v0.8.1                    |
 | v9.3.260327     | v0.9.0                    |
-| v9.3.260421     | current release           |
+| v9.3.260421     | v0.9.3                    |
+| v9.4.260714     | current release           |
 
 > [!NOTE]
 > Check the [idalib-rs](https://github.com/idalib-rs/idalib) documentation for additional information.
