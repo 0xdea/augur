@@ -25,7 +25,7 @@ It stores pseudocode of functions that reference strings in an organized directo
 - Decompilation feature based on the `decompile_to_file` API exported by [haruspex](https://github.com/0xdea/haruspex).
 - Pseudocode of each function that references a specific string is stored in a separate directory.
 
-## Blog posts
+## Articles
 
 - <https://hex-rays.com/blog/streamlining-vulnerability-research-idalib-rust-bindings>
 - <https://hnsecurity.it/blog/streamlining-vulnerability-research-with-ida-pro-and-rust>
