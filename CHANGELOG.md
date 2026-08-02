@@ -5,11 +5,11 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.10.0] - 2026-07-27
+## [0.10.0] - TODO
 
 ### Changed
 
-- Update idalib to v0.10.0 to support IDA Pro 9.4.
+- Update idalib to v0.10.0 to support IDA 9.4.
 - Update other dependencies.
 - Use `AsRef<Path>` bounds for all public functions that take a `Path` argument.
 - Enable all clippy restriction lints and fix any resulting issues.
@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improve comments.
 - Improve unit tests.
 - Improve CI.
+- Update documentation.
 
 ## [0.9.3] - 2026-06-06
 
@@ -50,7 +51,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Compatibility release for IDA Pro 9.3sp2.
+- Compatibility release for IDA 9.3sp2.
 - Update documentation.
 - Update dependencies.
 
@@ -62,7 +63,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Update idalib to v0.9.0 to support IDA Pro 9.3sp1.
+- Update idalib to v0.9.0 to support IDA 9.3sp1.
 - Update IDA plugin stub and metadata.
 - Improve integration tests and documentation.
 - Update other dependencies.

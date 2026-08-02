@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Project Is
 
-**Augur** is an IDA Pro headless plugin (written in Rust) that extracts strings and related pseudocode from binaries. It uses idalib's headless SDK to auto-analyze a binary, finds all string XREFs, decompiles the referencing functions, and writes the pseudocode to a `<binary>.str/` output directory organized by string.
+**Augur** is an IDA headless plugin (written in Rust) that extracts strings and related pseudocode from binaries. It uses idalib's headless SDK to auto-analyze a binary, finds all string XREFs, decompiles the referencing functions, and writes the pseudocode to a `<binary>.str/` output directory organized by string.
 
 ## Build & Test Commands
 
@@ -32,7 +32,7 @@ RUSTDOCFLAGS="-D warnings" cargo doc --no-deps
 cargo semver-checks
 ```
 
-The `IDADIR` environment variable must point to the IDA Pro installation directory at **runtime** (not just compile time). The build script checks common installation paths if it's unset, but for non-standard locations it must be set explicitly.
+The `IDADIR` environment variable must point to the IDA installation directory at **runtime** (not just compile time). The build script checks common installation paths if it's unset, but for non-standard locations it must be set explicitly.
 
 On Windows, `LIBCLANG_PATH` must also be set to the LLVM/Clang bin directory.
 
@@ -68,7 +68,7 @@ This is a **single-crate project** — no workspace, just `src/main.rs` (CLI ent
 
 ### External dependencies
 
-- **idalib** (0.9): Rust bindings for IDA Pro's idalib (headless SDK).
+- **idalib** (0.9): Rust bindings for IDA's idalib (headless SDK).
 - **haruspex** (0.9): Decompiler helper; provides `decompile_to_file`, `sanitize_filename`, `output_path_for_function`, and `prepare_output_dir`.
 - **anyhow** (1.0): Error handling.
 - **idalib-build** (0.9): Build-time linkage configuration (used in `build.rs`).
@@ -88,4 +88,4 @@ All clippy lint groups (`all`, `pedantic`, `nursery`, `cargo`, `restriction`) ar
 - A specific total file count in the output tree
 - `_905C_write error_/sub_4AD0@4AD0.c` exists and is non-empty (spot-checks naming and decompilation output)
 
-Uses the `walkdir` dev-dependency. Requires a live IDA Pro installation.
+Uses the `walkdir` dev-dependency. Requires a live IDA installation.

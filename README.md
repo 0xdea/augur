@@ -13,15 +13,15 @@
 >
 > -- A.
 
-Augur is a blazing fast IDA Pro headless plugin that extracts strings and related pseudocode from a binary file.
+Augur is a blazing fast IDA headless plugin that extracts strings and related pseudocode from a binary file.
 It stores pseudocode of functions that reference strings in an organized directory tree.
 
 ![](https://raw.githubusercontent.com/0xdea/augur/master/.img/screen01.png)
 
 ## Features
 
-- Blazing fast, headless user experience courtesy of IDA Pro 9.x and idalib-rs Rust bindings.
-- Support for binary targets for any architecture implemented by IDA Pro's Hex-Rays decompiler.
+- Blazing fast, headless user experience courtesy of IDA 9.x and idalib-rs Rust bindings.
+- Support for binary targets for any architecture implemented by IDA's Hex-Rays decompiler.
 - Decompilation feature based on the `decompile_to_file` API exported by [haruspex](https://github.com/0xdea/haruspex).
 - Pseudocode of each function that references a specific string is stored in a separate directory.
 
@@ -41,7 +41,7 @@ It stores pseudocode of functions that reference strings in an organized directo
 
 The easiest way to get the latest release is via [crates.io](https://crates.io/crates/augur):
 
-1. Download, install, and configure IDA Pro (see <https://hex-rays.com/ida-pro>).
+1. Download, install, and configure IDA (see <https://hex-rays.com/ida-pro>).
 2. Install LLVM/Clang (see <https://rust-lang.github.io/rust-bindgen/requirements.html>).
 3. On Linux/macOS, install as follows:
    ```sh
@@ -60,7 +60,7 @@ The easiest way to get the latest release is via [crates.io](https://crates.io/c
 
 Alternatively, you can build from [source](https://github.com/0xdea/augur):
 
-1. Download, install, and configure IDA Pro (see <https://hex-rays.com/ida-pro>).
+1. Download, install, and configure IDA (see <https://hex-rays.com/ida-pro>).
 2. Install LLVM/Clang (see <https://rust-lang.github.io/rust-bindgen/requirements.html>).
 3. On Linux/macOS, compile as follows:
    ```sh
@@ -81,8 +81,8 @@ Alternatively, you can build from [source](https://github.com/0xdea/augur):
 
 ## Usage
 
-1. Make sure IDA Pro is properly configured with a valid license.
-2. Make sure the `IDADIR` environment variable is set if your IDA Pro installation is in a non-standard location.
+1. Make sure IDA is properly configured with a valid license.
+2. Make sure the `IDADIR` environment variable is set if your IDA installation is in a non-standard location.
 3. Run as follows:
    ```sh
    augur <binary_file>
@@ -95,18 +95,18 @@ Alternatively, you can build from [source](https://github.com/0xdea/augur):
 
 ## Compatibility
 
-Only the latest IDA Pro release is officially supported, but older versions may work as well. The following table
-summarizes the latest compatible release for each IDA Pro version:
+Only the latest IDA release is officially supported, but older versions may work as well. The following table
+summarizes the latest compatible release for each IDA version:
 
-| IDA Pro version | Latest compatible release |
-| --------------- | ------------------------- |
-| v9.0.241217     | v0.2.3                    |
-| v9.1.250226     | v0.6.2                    |
-| v9.2.250908     | v0.7.5                    |
-| v9.3.260213     | v0.8.1                    |
-| v9.3.260327     | v0.9.0                    |
-| v9.3.260421     | v0.9.3                    |
-| v9.4.260714     | current release           |
+| IDA version | Latest compatible release |
+| ----------- | ------------------------- |
+| v9.0.241217 | v0.2.3                    |
+| v9.1.250226 | v0.6.2                    |
+| v9.2.250908 | v0.7.5                    |
+| v9.3.260213 | v0.8.1                    |
+| v9.3.260327 | v0.9.0                    |
+| v9.3.260421 | v0.9.3                    |
+| v9.4.260714 | current release           |
 
 > [!NOTE]
 > Check the [idalib-rs](https://github.com/idalib-rs/idalib) documentation for additional information.
