@@ -7,13 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.10.0] - TODO
 
+### Added
+
+- Add credits section to `README.md`.
+
 ### Changed
 
 - Update idalib to v0.10.0 to support IDA 9.4.
 - Update other dependencies.
 - Use `AsRef<Path>` bounds for all public functions that take a `Path` argument.
 - Enable all clippy restriction lints and fix any resulting issues.
-- Add credits section to `README.md`.
+- Use the `--locked` flag for all suitable `cargo` commands.
 - Improve comments.
 - Improve unit tests.
 - Improve CI.

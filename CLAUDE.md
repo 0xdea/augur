@@ -10,23 +10,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 # Build (requires IDADIR to be set at runtime, not just compile time)
-cargo build --release
+cargo build --release --locked
 
 # Run all tests (integration test against tests/data/ls binary)
-cargo test
+cargo test --locked
 
 # Run the specific integration test
-cargo test --test tests
+cargo test --test tests --locked
 
 # Lint
 cargo fmt --all --check
-cargo clippy --all-targets -- -D warnings
+cargo clippy --all-targets --locked -- -D warnings
 
 # Check for known-vulnerable dependencies
 cargo audit
 
 # Check docs build cleanly (CI treats warnings as errors here too)
-RUSTDOCFLAGS="-D warnings" cargo doc --no-deps
+RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --locked
 
 # Check semver compatibility
 cargo semver-checks
