@@ -5,10 +5,12 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.10.0] - TODO
+## [0.10.0] - 2026-09-18
 
 ### Added
 
+- Disable the new argument name hints in the Hex-Rays decompiler.
+- Add a regression test to check that argument name hints are not present in the extracted pseudocode.
 - Add credits section to `README.md`.
 
 ### Changed

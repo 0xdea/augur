@@ -55,6 +55,19 @@ fn main() -> anyhow::Result<()> {
     );
     println!("Ok.");
 
+    // Check `run` disables the new Hex-Rays argument name hints by default.
+    print!("[*] Checking argument name hints are disabled by default... ");
+    let main_file = dirpath.join("_916D___libs__").join("main@2630.c");
+    let main_content = fs::read_to_string(&main_file)?;
+    assert!(
+        main_content.contains(
+            r#"fwrite("A NULL argv[0] was passed through an exec system call.\n", 1u, 0x37u, stderr);"#
+        ),
+        "output file `{}` contains argument name hints, expected them to be disabled",
+        main_file.display()
+    );
+    println!("Ok.");
+
     // Spot-check a known output file: verify the naming scheme and that decompilation produced output.
     print!("[*] Checking known output file exists and is non-empty... ");
     let known_file = dirpath.join("_905C_write error_").join("sub_4AD0@4AD0.c");

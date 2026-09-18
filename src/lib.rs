@@ -9,7 +9,7 @@ use std::path::Path;
 
 use anyhow::Context as _;
 use haruspex::{
-    HaruspexError, decompile_to_file, output_path_for_function, prepare_output_dir,
+    ArgHintsMode, HaruspexError, decompile_to_file, output_path_for_function, prepare_output_dir,
     sanitize_filename,
 };
 use idalib::decompiler::HexRaysErrorCode;
@@ -36,7 +36,7 @@ impl IDAString {
     fn traverse_xrefs(
         &self,
         idb: &IDB,
-        first_xref: XRef,
+        first_xref: XRef<'_>,
         addr: Address,
         dirpath: &Path,
         string_uses_count: &mut usize,
@@ -107,7 +107,7 @@ pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
         "[*] Analyzing binary file `{}`",
         filepath.as_ref().display()
     );
-    let idb = IDB::open(&filepath).with_context(|| {
+    let mut idb = IDB::open(&filepath).with_context(|| {
         format!(
             "Failed to analyze binary file `{}`",
             filepath.as_ref().display()
@@ -124,6 +124,10 @@ pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
 
     // Ensure Hex-Rays decompiler is available.
     anyhow::ensure!(idb.decompiler_available(), "Decompiler is not available");
+
+    // Configure the argument hints mode used for all decompiled functions.
+    idb.modify_decompiler_config(ArgHintsMode::Disabled.directive())
+        .context("Failed to set decompiler's argument hints mode")?;
 
     // Create a new output directory, returning an error if it already exists, and it's not empty.
     let dirpath = filepath.as_ref().with_extension("str");
@@ -194,7 +198,7 @@ pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
 /// Returns [`HaruspexError`] if the output file cannot be created or the function cannot be decompiled.
 fn dump_function_pseudocode(
     idb: &IDB,
-    func: &Function,
+    func: &Function<'_>,
     from: Address,
     dirpath: &Path,
 ) -> Result<(), HaruspexError> {
