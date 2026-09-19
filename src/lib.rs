@@ -106,7 +106,7 @@ pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
     let start = Instant::now();
 
     // Open the target binary and run auto-analysis.
-    println!(
+    eprintln!(
         "[*] Analyzing binary file `{}`",
         filepath.as_ref().display()
     );
@@ -116,14 +116,14 @@ pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
             filepath.as_ref().display()
         )
     })?;
-    println!("[+] Successfully analyzed binary file");
-    println!();
+    eprintln!("[+] Successfully analyzed binary file");
+    eprintln!();
 
     // Print binary file information.
-    println!("[-] Processor: {}", idb.processor().long_name());
-    println!("[-] Compiler: {:?}", idb.meta().cc_id());
-    println!("[-] File type: {:?}", idb.meta().filetype());
-    println!();
+    eprintln!("[-] Processor: {}", idb.processor().long_name());
+    eprintln!("[-] Compiler: {:?}", idb.meta().cc_id());
+    eprintln!("[-] File type: {:?}", idb.meta().filetype());
+    eprintln!();
 
     // Ensure Hex-Rays decompiler is available.
     anyhow::ensure!(idb.decompiler_available(), "Decompiler is not available");
@@ -139,8 +139,8 @@ pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
     let mut string_uses_count = 0;
 
     // Locate XREFs to strings in the target binary and dump related pseudocode.
-    println!();
-    println!("[*] Finding cross-references to strings...");
+    eprintln!();
+    eprintln!("[*] Finding cross-references to strings...");
     let strings = idb.strings();
     for i in 0..strings.len() {
         // Extract string with its address
@@ -182,12 +182,12 @@ pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
         anyhow::bail!("No string uses were found, check your input file");
     }
 
-    println!();
-    println!(
+    eprintln!();
+    eprintln!(
         "[+] Found {string_uses_count} string uses in functions, decompiled into `{}`",
         dirpath.display()
     );
-    println!(
+    eprintln!(
         "[+] Done processing binary file `{}` in {:.1} seconds",
         filepath.as_ref().display(),
         start.elapsed().as_secs_f64()
