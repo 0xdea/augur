@@ -128,7 +128,7 @@ pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
     // Ensure Hex-Rays decompiler is available.
     anyhow::ensure!(idb.decompiler_available(), "Decompiler is not available");
 
-    // Configure the argument hints mode used for all decompiled functions.
+    // Disable argument name hints.
     idb.modify_decompiler_config(ArgHintsMode::Disabled.directive())
         .context("Failed to set decompiler's argument hints mode")?;
 
