@@ -6,6 +6,7 @@
 use std::fs;
 use std::ops::Deref;
 use std::path::Path;
+use std::time::Instant;
 
 use anyhow::Context as _;
 use haruspex::{
@@ -102,6 +103,8 @@ impl From<String> for IDAString {
 ///
 /// Returns [`anyhow::Error`] in case something goes wrong with analyzing the binary file or decompiling functions.
 pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
+    let start = Instant::now();
+
     // Open the target binary and run auto-analysis.
     println!(
         "[*] Analyzing binary file `{}`",
@@ -185,8 +188,9 @@ pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
         dirpath.display()
     );
     println!(
-        "[+] Done processing binary file `{}`",
-        filepath.as_ref().display()
+        "[+] Done processing binary file `{}` in {:.1} seconds",
+        filepath.as_ref().display(),
+        start.elapsed().as_secs_f64()
     );
     Ok(string_uses_count)
 }
