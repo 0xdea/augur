@@ -58,7 +58,6 @@ impl IDAString {
                     *string_uses_count += 1;
                 }
             } else {
-                // Print only XREF address.
                 println!("{from:#X} in [unknown]");
             }
             current = xref.next_to();
@@ -105,7 +104,6 @@ impl From<String> for IDAString {
 pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
     let start = Instant::now();
 
-    // Open the target binary and run auto-analysis.
     eprintln!(
         "[*] Analyzing binary file `{}`",
         filepath.as_ref().display()
@@ -119,26 +117,23 @@ pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
     eprintln!("[+] Successfully analyzed binary file");
     eprintln!();
 
-    // Print binary file information.
     eprintln!("[-] Processor: {}", idb.processor().long_name());
     eprintln!("[-] Compiler: {:?}", idb.meta().cc_id());
     eprintln!("[-] File type: {:?}", idb.meta().filetype());
     eprintln!();
 
-    // Ensure Hex-Rays decompiler is available.
     anyhow::ensure!(idb.decompiler_available(), "Decompiler is not available");
 
     // Disable argument name hints.
     idb.modify_decompiler_config(ArgHintsMode::Disabled.directive())
         .context("Failed to set decompiler's argument hints mode")?;
 
-    // Create a new output directory, returning an error if it already exists, and it's not empty.
+    // Create a new output directory, returning an error if it already exists and it's not empty.
     let dirpath = filepath.as_ref().with_extension("str");
     prepare_output_dir(&dirpath)?;
 
     let mut string_uses_count = 0;
 
-    // Locate XREFs to strings in the target binary and dump related pseudocode.
     eprintln!();
     eprintln!("[*] Finding cross-references to strings...");
     let strings = idb.strings();
@@ -169,13 +164,12 @@ pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
                     // Ignore other IDA errors and do nothing when XREF processing is finished.
                     Err(HaruspexError::DecompileFailed(_)) | Ok(()) => Ok(()),
 
-                    // Return any other error.
+                    // Propagate any other error.
                     Err(e) => Err(e),
                 }
             })?;
     }
 
-    // Remove the output directory and return an error in case no string uses were found.
     if string_uses_count == 0 {
         fs::remove_dir_all(&dirpath)
             .with_context(|| format!("Failed to remove directory `{}`", dirpath.display()))?;
@@ -206,17 +200,13 @@ fn dump_function_pseudocode(
     from: Address,
     dirpath: &Path,
 ) -> Result<(), HaruspexError> {
-    // Build the output file path.
     let func_name = func.name().unwrap_or_else(|| "[no name]".into());
     let output_path = output_path_for_function(func, dirpath);
 
-    // Create the output directory if needed.
     fs::create_dir_all(dirpath)?;
 
-    // Decompile function and write pseudocode to the output file.
     decompile_to_file(idb, func, &output_path)?;
 
-    // Print XREF address, function name, and output path in case of successful decompilation.
     println!("{from:#X} in {func_name} -> `{}`", output_path.display());
     Ok(())
 }
