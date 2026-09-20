@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Move informational messages to `stderr`.
 - Use `CARGO_BIN_NAME` instead of `CARGO_PKG_NAME` for the program name.
+- Update documentation.
 
 ## [0.10.0] - 2026-09-18
 
