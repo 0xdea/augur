@@ -32,31 +32,31 @@ fn main() -> anyhow::Result<()> {
 
     // Run augur and check the number of string uses in functions.
     let n_decomp = augur::run(Path::new(FILENAME))?;
-    println!();
-    print!("[*] Checking number of string uses in functions... ");
+    eprintln!();
+    eprint!("[*] Checking number of string uses in functions... ");
     assert_eq!(n_decomp, N_USES, "wrong number of string uses");
-    println!("Ok.");
+    eprintln!("Ok.");
 
     // Check the number of created subdirectories in the output directory.
-    print!("[*] Checking number of subdirectories in output directory... ");
+    eprint!("[*] Checking number of subdirectories in output directory... ");
     assert_eq!(
         dirpath.read_dir()?.count(),
         N_SUBDIRS,
         "wrong number of subdirectories"
     );
-    println!("Ok.");
+    eprintln!("Ok.");
 
     // Check the number of created files in the output directory and all subdirectories.
-    print!("[*] Checking number of files in output directory and all subdirectories... ");
+    eprint!("[*] Checking number of files in output directory and all subdirectories... ");
     assert_eq!(
         WalkDir::new(&dirpath).into_iter().count(),
         N_FILES,
         "wrong number of files"
     );
-    println!("Ok.");
+    eprintln!("Ok.");
 
     // Check `run` disables the new Hex-Rays argument name hints by default.
-    print!("[*] Checking argument name hints are disabled by default... ");
+    eprint!("[*] Checking argument name hints are disabled by default... ");
     let main_file = dirpath.join("_916D___libs__").join("main@2630.c");
     let main_content = fs::read_to_string(&main_file)?;
     assert!(
@@ -66,10 +66,10 @@ fn main() -> anyhow::Result<()> {
         "output file `{}` contains argument name hints, expected them to be disabled",
         main_file.display()
     );
-    println!("Ok.");
+    eprintln!("Ok.");
 
     // Spot-check a known output file: verify the naming scheme and that decompilation produced output.
-    print!("[*] Checking known output file exists and is non-empty... ");
+    eprint!("[*] Checking known output file exists and is non-empty... ");
     let known_file = dirpath.join("_905C_write error_").join("sub_4AD0@4AD0.c");
     assert!(
         known_file.is_file(),
@@ -81,13 +81,13 @@ fn main() -> anyhow::Result<()> {
         "output file is empty: {}",
         known_file.display()
     );
-    println!("Ok.");
+    eprintln!("Ok.");
 
     // Remove the output directory at the end.
     if dirpath.exists() {
         fs::remove_dir_all(&dirpath)?;
     }
 
-    println!();
+    eprintln!();
     Ok(())
 }
