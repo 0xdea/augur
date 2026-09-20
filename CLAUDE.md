@@ -48,7 +48,7 @@ This is a **single-crate project** — no workspace, just `src/main.rs` (CLI ent
 
 - **`dump_function_pseudocode(idb, func, from, dirpath)`**: Free function that builds the output path via `haruspex::output_path_for_function`, creates the subdirectory, decompiles to file, and prints the result.
 
-- **`run(filepath: impl AsRef<Path>) -> anyhow::Result<usize>`**: Public entry point. Opens the binary via `IDB::open()`, calls `haruspex::prepare_output_dir()` to set up the `<binary>.str/` directory, iterates all strings, dispatches `traverse_xrefs()` for each, returns the total decompiled use count.
+- **`run(filepath: impl AsRef<Path>) -> anyhow::Result<usize>`**: Public entry point. Opens the binary via `IDB::open()`, disables the Hex-Rays argument name hints via `idb.modify_decompiler_config(ArgHintsMode::Disabled.directive())`, calls `haruspex::prepare_output_dir()` to set up the `<binary>.str/` directory, iterates all strings, dispatches `traverse_xrefs()` for each, returns the total decompiled use count. Informational/progress messages go to stderr; only the per-string and per-function result lines (address, name, output path) go to stdout. Prints total elapsed time on completion.
 
 ### Output layout
 
@@ -86,6 +86,9 @@ All clippy lint groups (`all`, `pedantic`, `nursery`, `cargo`, `restriction`) ar
 - Exactly 27 decompiled string uses
 - Exactly 26 output subdirectories
 - A specific total file count in the output tree
+- `_916D___libs__/main@2630.c` does not contain Hex-Rays argument name hints (regression test for the hints-disabled default)
 - `_905C_write error_/sub_4AD0@4AD0.c` exists and is non-empty (spot-checks naming and decompilation output)
+
+Test harness progress messages are printed to stderr.
 
 Uses the `walkdir` dev-dependency. Requires a live IDA installation.
