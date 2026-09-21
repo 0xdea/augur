@@ -24,6 +24,7 @@ It stores pseudocode of functions that reference strings in an organized directo
 - Support for binary targets for any architecture implemented by IDA's Hex-Rays decompiler.
 - Decompilation feature based on the `decompile_to_file` API exported by [haruspex](https://github.com/0xdea/haruspex).
 - Pseudocode of each function that references a specific string is stored in a separate directory.
+- Type definitions used by a decompiled function are dumped alongside its pseudocode in a matching `.h` file, when available.
 
 ## Articles
 
@@ -87,7 +88,7 @@ Alternatively, you can build from [source](https://github.com/0xdea/augur):
    ```sh
    augur <binary_file>
    ```
-4. Find the extracted pseudocode of each decompiled function in the `binary_file.str` directory, organized by string:
+4. Find the extracted pseudocode and type definitions of each decompiled function in the `binary_file.str` directory, organized by string:
    ```sh
    vim <binary_file>.str
    code <binary_file>.str

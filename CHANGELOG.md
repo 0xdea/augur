@@ -10,12 +10,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Display elapsed time in the `run` function.
+- Dump type definitions used by a decompiled function to a sibling `.h` file, when available.
+- Add regression tests for the presence/absence of the `.h` file depending on whether type definitions are available.
 
 ### Changed
 
 - Move informational messages to `stderr`.
 - Use `CARGO_BIN_NAME` instead of `CARGO_PKG_NAME` for the program name.
 - Update documentation.
+- Update dependencies.
+
+### Fixed
+
+- Account for recent changes in the haruspex library API (v0.10.1).
 
 ## [0.10.0] - 2026-09-18
 

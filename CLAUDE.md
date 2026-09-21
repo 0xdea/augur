@@ -46,7 +46,7 @@ This is a **single-crate project** — no workspace, just `src/main.rs` (CLI ent
   - `traverse_xrefs()`: Iteratively walks the XREF chain; for each non-thunk function, calls `dump_function_pseudocode()` and increments the use count.
   - `filter_printable_chars()`: Returns only ASCII graphic characters and spaces — used to produce a human-readable string before passing to `sanitize_filename()`.
 
-- **`dump_function_pseudocode(idb, func, from, dirpath)`**: Free function that builds the output path via `haruspex::output_path_for_function`, creates the subdirectory, decompiles to file, and prints the result.
+- **`dump_function_pseudocode(idb, func, from, dirpath)`**: Free function that builds the output path via `haruspex::output_path_for_function`, creates the subdirectory, decompiles to file, and prints the result. Writes a `.c` pseudocode file plus a sibling `.h` file with type definitions when any exist; if `decompile_to_file` returns `HaruspexError::TypesEmpty` (no type defs to dump), only the `.c` file is written and a shorter, address-less line is printed.
 
 - **`run(filepath: impl AsRef<Path>) -> anyhow::Result<usize>`**: Public entry point. Opens the binary via `IDB::open()`, disables the Hex-Rays argument name hints via `idb.modify_decompiler_config(ArgHintsMode::Disabled.directive())`, calls `haruspex::prepare_output_dir()` to set up the `<binary>.str/` directory, iterates all strings, dispatches `traverse_xrefs()` for each, returns the total decompiled use count. Informational/progress messages go to stderr; only the per-string and per-function result lines (address, name, output path) go to stdout. Prints total elapsed time on completion.
 
@@ -56,6 +56,7 @@ This is a **single-crate project** — no workspace, just `src/main.rs` (CLI ent
 <binary>.str/
   _{addr:X}_{sanitized_string}_/
     {func_name}@{addr}.c
+    {func_name}@{addr}.h   # only when the function has type definitions to dump
     ...
 ```
 
@@ -68,10 +69,10 @@ This is a **single-crate project** — no workspace, just `src/main.rs` (CLI ent
 
 ### External dependencies
 
-- **idalib** (0.9): Rust bindings for IDA's idalib (headless SDK).
-- **haruspex** (0.9): Decompiler helper; provides `decompile_to_file`, `sanitize_filename`, `output_path_for_function`, and `prepare_output_dir`.
+- **idalib** (0.10): Rust bindings for IDA's idalib (headless SDK).
+- **haruspex** (0.10): Decompiler helper; provides `decompile_to_file`, `sanitize_filename`, `output_path_for_function`, and `prepare_output_dir`.
 - **anyhow** (1.0): Error handling.
-- **idalib-build** (0.9): Build-time linkage configuration (used in `build.rs`).
+- **idalib-build** (0.10): Build-time linkage configuration (used in `build.rs`).
 
 ## Lint policy
 
@@ -88,6 +89,8 @@ All clippy lint groups (`all`, `pedantic`, `nursery`, `cargo`, `restriction`) ar
 - A specific total file count in the output tree
 - `_916D___libs__/main@2630.c` does not contain Hex-Rays argument name hints (regression test for the hints-disabled default)
 - `_905C_write error_/sub_4AD0@4AD0.c` exists and is non-empty (spot-checks naming and decompilation output)
+- `_905C_write error_/sub_4AD0@4AD0.h` does not exist (regression test for the `TypesEmpty` case: no header when there are no type defs)
+- `_9068_(NULL)_/sub_4B80@4B80.h` exists and is non-empty (regression test for the normal case: header written alongside the `.c` file)
 
 Test harness progress messages are printed to stderr.
 

@@ -14,8 +14,10 @@ fn main() -> anyhow::Result<()> {
     const N_USES: usize = 27;
     // Expected number of subdirectories.
     const N_SUBDIRS: usize = 26;
+    // Expected number of header files.
+    const N_HEADERS: usize = 11;
     // Expected number of files in the output directory and all subdirectories.
-    const N_FILES: usize = N_USES + N_SUBDIRS + 1;
+    const N_FILES: usize = N_USES + N_SUBDIRS + N_HEADERS + 1;
 
     // Remove the IDB file if it exists.
     let idb_path = Path::new(FILENAME).with_extension("i64");
@@ -80,6 +82,31 @@ fn main() -> anyhow::Result<()> {
         known_file.metadata()?.len() > 0,
         "output file is empty: {}",
         known_file.display()
+    );
+    eprintln!("Ok.");
+
+    // Check that a function with no type definitions to dump produces no header file.
+    eprint!("[*] Checking function with no type definitions has no header file... ");
+    let missing_header = dirpath.join("_905C_write error_").join("sub_4AD0@4AD0.h");
+    assert!(
+        !missing_header.exists(),
+        "unexpected header file present: {}",
+        missing_header.display()
+    );
+    eprintln!("Ok.");
+
+    // Check that a function with type definitions produces a matching, non-empty header file.
+    eprint!("[*] Checking known header file exists and is non-empty... ");
+    let known_header = dirpath.join("_9068_(NULL)_").join("sub_4B80@4B80.h");
+    assert!(
+        known_header.is_file(),
+        "expected header file missing: {}",
+        known_header.display()
+    );
+    assert!(
+        known_header.metadata()?.len() > 0,
+        "header file is empty: {}",
+        known_header.display()
     );
     eprintln!("Ok.");
 

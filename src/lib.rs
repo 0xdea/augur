@@ -3,6 +3,7 @@
 #![cfg_attr(doc, doc = include_str!("../README.md"))]
 #![doc(html_logo_url = "https://raw.githubusercontent.com/0xdea/augur/master/.img/logo.png")]
 
+use std::ffi::OsStr;
 use std::fs;
 use std::ops::Deref;
 use std::path::Path;
@@ -24,7 +25,7 @@ use idalib::{Address, IDAError};
 struct IDAString(String);
 
 impl IDAString {
-    /// Iteratively traverses XREFs and dumps related pseudocode to the output file.
+    /// Iteratively traverses XREFs and dumps related pseudocode and type definitions to the output file.
     ///
     /// # Errors
     ///
@@ -50,7 +51,8 @@ impl IDAString {
         while let Some(xref) = current {
             let from = xref.from();
 
-            // If XREF is in a function, dump the function's pseudocode, otherwise only print its address.
+            // If XREF is in a function, dump the function's pseudocode and type definitions,
+            // otherwise only print its address.
             if let Some(f) = idb.function_at(from) {
                 // Skip the function if it has the `thunk` attribute.
                 if !f.flags().contains(FunctionFlags::THUNK) {
@@ -93,8 +95,8 @@ impl From<String> for IDAString {
     }
 }
 
-/// Extracts strings and pseudocode of each function that references them from the binary at
-/// `filepath` and saves them in `filepath.str`.
+/// Extracts strings and pseudocode/type definitions of each function that references them from the
+/// binary at `filepath` and saves them in `filepath.str`.
 ///
 /// Returns the number of locations where strings are referenced.
 ///
@@ -149,7 +151,7 @@ pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
             .context("Failed to get string address")?;
         println!("\n{addr:#X} {:?} ", string.as_ref());
 
-        // Traverse XREFs to string and dump the related pseudocode to the output file.
+        // Traverse XREFs to string and dump the related pseudocode and type definitions to the output files.
         idb.first_xref_to(addr, XRefQuery::ALL)
             .map_or(Ok::<(), HaruspexError>(()), |xref| {
                 match string.traverse_xrefs(&idb, xref, addr, &dirpath, &mut string_uses_count) {
@@ -191,6 +193,9 @@ pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
 
 /// Dumps pseudocode of `func` into `dirpath` and prints XREF address, function name, and output path on success.
 ///
+/// Alongside the `.c` pseudocode file, a sibling `.h` file with `func`'s type definitions is written
+/// when any are available; if there are none, only the `.c` file is produced.
+///
 /// # Errors
 ///
 /// Returns [`HaruspexError`] if the output file cannot be created or the function cannot be decompiled.
@@ -205,10 +210,30 @@ fn dump_function_pseudocode(
 
     fs::create_dir_all(dirpath)?;
 
-    decompile_to_file(idb, func, &output_path)?;
+    match decompile_to_file(idb, func, &output_path) {
+        // Pseudocode and type definitions were successfully written to the output files.
+        Ok(()) => {
+            println!(
+                "{from:#X} in {func_name} -> `{}` + `{}`",
+                output_path.display(),
+                output_path
+                    .with_extension("h")
+                    .file_name()
+                    .map(OsStr::to_string_lossy)
+                    .unwrap_or_default()
+            );
+            Ok(())
+        }
 
-    println!("{from:#X} in {func_name} -> `{}`", output_path.display());
-    Ok(())
+        // Pseudocode was written, but there were no type definitions to dump.
+        Err(HaruspexError::TypesEmpty) => {
+            println!("{func_name} -> `{}`", output_path.display());
+            Ok(())
+        }
+
+        // Propagate any other error.
+        Err(e) => Err(e),
+    }
 }
 
 #[cfg(test)]
