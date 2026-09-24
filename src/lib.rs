@@ -3,10 +3,12 @@
 #![cfg_attr(doc, doc = include_str!("../README.md"))]
 #![doc(html_logo_url = "https://raw.githubusercontent.com/0xdea/augur/master/.img/logo.png")]
 
+use std::collections::HashMap;
+use std::collections::hash_map::Entry;
 use std::ffi::OsStr;
 use std::fs;
 use std::ops::Deref;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 use anyhow::Context as _;
@@ -19,6 +21,15 @@ use idalib::func::{Function, FunctionFlags};
 use idalib::idb::IDB;
 use idalib::xref::{XRef, XRefQuery};
 use idalib::{Address, IDAError};
+
+/// Output files already written for a decompiled function, used to avoid decompiling it again.
+#[derive(Debug)]
+struct DumpedFunction {
+    /// Path of the most recently written `.c` pseudocode file.
+    source: PathBuf,
+    /// Whether a sibling `.h` file with type definitions was also written.
+    has_header: bool,
+}
 
 /// IDA string type that holds strings extracted from IDA's string list.
 #[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -42,6 +53,7 @@ impl IDAString {
         addr: Address,
         dirpath: &Path,
         string_uses_count: &mut usize,
+        dumped: &mut HashMap<Address, DumpedFunction>,
     ) -> Result<(), HaruspexError> {
         let string_name = self.filter_printable_chars();
         let dirpath_sub = dirpath.join(format!("_{addr:X}_{}_", sanitize_filename(&string_name)));
@@ -56,7 +68,7 @@ impl IDAString {
             if let Some(f) = idb.function_at(from) {
                 // Skip the function if it has the `thunk` attribute.
                 if !f.flags().contains(FunctionFlags::THUNK) {
-                    dump_function_pseudocode(idb, &f, from, &dirpath_sub)?;
+                    dump_function_pseudocode(idb, &f, from, &dirpath_sub, dumped)?;
                     *string_uses_count += 1;
                 }
             } else {
@@ -144,6 +156,7 @@ pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
     }
 
     let mut string_uses_count = 0;
+    let mut dumped = HashMap::new();
 
     eprintln!();
     eprintln!("[*] Finding cross-references to strings...");
@@ -163,7 +176,14 @@ pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
         // Traverse XREFs to string and dump the related pseudocode and type definitions to the output files.
         idb.first_xref_to(addr, XRefQuery::ALL)
             .map_or(Ok::<(), HaruspexError>(()), |xref| {
-                match string.traverse_xrefs(&idb, xref, addr, &dirpath, &mut string_uses_count) {
+                match string.traverse_xrefs(
+                    &idb,
+                    xref,
+                    addr,
+                    &dirpath,
+                    &mut string_uses_count,
+                    &mut dumped,
+                ) {
                     // Cleanup and return an error if Hex-Rays decompiler license is not available.
                     Err(HaruspexError::DecompileFailed(IDAError::HexRays(e)))
                         if e.code() == HexRaysErrorCode::License =>
@@ -234,6 +254,9 @@ fn recover_strings(idb: &mut IDB) -> Result<(), IDAError> {
 /// Alongside the `.c` pseudocode file, a sibling `.h` file with `func`'s type definitions is written
 /// when any are available; if there are none, only the `.c` file is produced.
 ///
+/// Each function is decompiled only once: `dumped` tracks the output files already written for each
+/// function, which are reused (as is if already in `dirpath`, copied otherwise) for any further string use.
+///
 /// # Errors
 ///
 /// Returns [`HaruspexError`] if the output file cannot be created or the function cannot be decompiled.
@@ -242,36 +265,65 @@ fn dump_function_pseudocode(
     func: &Function<'_>,
     from: Address,
     dirpath: &Path,
+    dumped: &mut HashMap<Address, DumpedFunction>,
 ) -> Result<(), HaruspexError> {
     let func_name = func.name().unwrap_or_else(|| "[no name]".into());
     let output_path = output_path_for_function(func, dirpath);
+    let header_path = output_path.with_extension("h");
 
     fs::create_dir_all(dirpath)?;
 
-    match decompile_to_file(idb, func, &output_path) {
-        // Pseudocode and type definitions were successfully written to the output files.
-        Ok(()) => {
-            println!(
-                "{from:#X} in {func_name} -> `{}` + `{}`",
-                output_path.display(),
-                output_path
-                    .with_extension("h")
-                    .file_name()
-                    .map(OsStr::to_string_lossy)
-                    .unwrap_or_default()
-            );
-            Ok(())
+    let dumped_func = match dumped.entry(func.start_address()) {
+        // The function was already decompiled: copy its output files unless they are already in place,
+        // then track the copy, so that further uses of the same string don't copy the files again.
+        Entry::Occupied(entry) => {
+            let prev = entry.into_mut();
+            if prev.source != output_path {
+                fs::copy(&prev.source, &output_path)?;
+                if prev.has_header {
+                    fs::copy(prev.source.with_extension("h"), &header_path)?;
+                }
+                prev.source = output_path;
+            }
+            prev
         }
 
-        // Pseudocode was written, but there were no type definitions to dump.
-        Err(HaruspexError::TypesEmpty) => {
-            println!("{from:#X} in {func_name} -> `{}`", output_path.display());
-            Ok(())
-        }
+        // First use of the function: decompile it and record its output files.
+        Entry::Vacant(entry) => {
+            let has_header = match decompile_to_file(idb, func, &output_path) {
+                // Pseudocode was written; type definitions are best-effort and may be missing even on success.
+                Ok(()) => header_path.is_file(),
 
-        // Propagate any other error.
-        Err(e) => Err(e),
+                // Pseudocode was written, but there were no type definitions to dump.
+                Err(HaruspexError::TypesEmpty) => false,
+
+                // Propagate any other error.
+                Err(e) => return Err(e),
+            };
+            entry.insert(DumpedFunction {
+                source: output_path,
+                has_header,
+            })
+        }
+    };
+
+    if dumped_func.has_header {
+        println!(
+            "{from:#X} in {func_name} -> `{}` + `{}`",
+            dumped_func.source.display(),
+            header_path
+                .file_name()
+                .map(OsStr::to_string_lossy)
+                .unwrap_or_default()
+        );
+    } else {
+        println!(
+            "{from:#X} in {func_name} -> `{}`",
+            dumped_func.source.display()
+        );
     }
+
+    Ok(())
 }
 
 #[cfg(test)]
