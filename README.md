@@ -121,7 +121,7 @@ This project's development has been supported by the following organizations:
 
 ## Changelog
 
-- [CHANGELOG.md](https://github.com/0xdea/haruspex/blob/master/CHANGELOG.md)
+- [CHANGELOG.md](https://github.com/0xdea/augur/blob/master/CHANGELOG.md)
 
 ## TODO
 

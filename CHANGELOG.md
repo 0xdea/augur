@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add an initial full decompilation step to allow IDA 9.4 to [recover additional strings](https://docs.hex-rays.com/release-notes/9_4#decompiler-strings).
 
+### Fixed
+
+- Fix link to `CHANGELOG.md`.
+
 ## [0.10.1] - 2026-09-21
 
 ### Added
