@@ -160,18 +160,10 @@ pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
 
     eprintln!();
     eprintln!("[*] Finding cross-references to strings...");
-    let strings = idb.strings();
-    for i in 0..strings.len() {
-        // Extract string with its address
-        let string = IDAString::from(
-            strings
-                .get_by_index(i)
-                .context("Failed to get string content")?,
-        );
-        let addr = strings
-            .get_address_by_index(i)
-            .context("Failed to get string address")?;
-        println!("\n{addr:#X} {:?} ", string.as_ref());
+    // Iterate over strings with their addresses, skipping any invalid entry in the string list.
+    for (addr, content) in idb.strings().iter() {
+        let string = IDAString::from(content);
+        println!("\n{addr:#X} {:?}", string.as_ref());
 
         // Traverse XREFs to string and dump the related pseudocode and type definitions to the output files.
         idb.first_xref_to(addr, XRefQuery::ALL)

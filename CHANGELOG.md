@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Decompile each function only once, reusing its output files for further string uses.
 
+### Fixed
+
+- Skip invalid entries in the string list instead of aborting the whole run.
+- Remove trailing whitespace from the string lines in tool output.
+
 ## [0.10.2] - 2026-09-24
 
 ### Added
