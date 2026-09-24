@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Don't retry decompiling functions that already failed to decompile.
 - Report functions that fail to decompile in tool output.
 - Require haruspex v0.10.1 or later.
+- Improve code style.
 
 ### Fixed
 

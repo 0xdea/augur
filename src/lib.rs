@@ -55,8 +55,8 @@ impl DumpedFunction {
             Ok(cfunc) => cfunc,
 
             // The Hex-Rays decompiler license is not available.
-            Err(IDAError::HexRays(e)) if e.code() == HexRaysErrorCode::License => {
-                return Err(IDAError::HexRays(e).into());
+            Err(IDAError::HexRays(err)) if err.code() == HexRaysErrorCode::License => {
+                return Err(IDAError::HexRays(err).into());
             }
 
             // The function can't be decompiled.
@@ -72,17 +72,17 @@ impl DumpedFunction {
                 Ok(()) => true,
 
                 // The Hex-Rays decompiler license is not available.
-                Err(HaruspexError::DecompileFailed(IDAError::HexRays(e)))
-                    if e.code() == HexRaysErrorCode::License =>
+                Err(HaruspexError::DecompileFailed(IDAError::HexRays(err)))
+                    if err.code() == HexRaysErrorCode::License =>
                 {
-                    return Err(IDAError::HexRays(e).into());
+                    return Err(IDAError::HexRays(err).into());
                 }
 
                 // Type definitions are best-effort: no header if there are none or dumping them failed.
                 Err(HaruspexError::TypesEmpty | HaruspexError::DecompileFailed(_)) => false,
 
                 // Propagate any other error.
-                Err(e) => return Err(e),
+                Err(err) => return Err(err),
             };
 
         Ok(Some(Self {
@@ -149,10 +149,10 @@ impl IDAString {
 
             // If XREF is in a function, dump the function's pseudocode and type definitions,
             // otherwise only print its address.
-            if let Some(f) = idb.function_at(from) {
+            if let Some(func) = idb.function_at(from) {
                 // Skip the function if it has the `thunk` attribute, and only count it if it was dumped.
-                if !f.flags().contains(FunctionFlags::THUNK)
-                    && dump_function_pseudocode(idb, &f, from, &dirpath_sub, dumped)?
+                if !func.flags().contains(FunctionFlags::THUNK)
+                    && dump_function_pseudocode(idb, &func, from, &dirpath_sub, dumped)?
                 {
                     *string_uses_count += 1;
                 }
@@ -235,9 +235,9 @@ pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
     eprintln!();
     eprintln!("[*] Decompiling all functions and recovering strings...");
     // Cleanup and return an error if the Hex-Rays decompiler license is not available.
-    if let Err(e) = recover_strings(&mut idb) {
+    if let Err(err) = recover_strings(&mut idb) {
         fs::remove_dir_all(&dirpath)?;
-        return Err(e.into());
+        return Err(err.into());
     }
 
     let mut string_uses_count = 0;
@@ -263,11 +263,11 @@ pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
                     &mut dumped,
                 ) {
                     // Cleanup and return an error if Hex-Rays decompiler license is not available.
-                    Err(HaruspexError::DecompileFailed(IDAError::HexRays(e)))
-                        if e.code() == HexRaysErrorCode::License =>
+                    Err(HaruspexError::DecompileFailed(IDAError::HexRays(err)))
+                        if err.code() == HexRaysErrorCode::License =>
                     {
                         fs::remove_dir_all(&dirpath)?;
-                        Err(IDAError::HexRays(e).into())
+                        Err(IDAError::HexRays(err).into())
                     }
 
                     // Propagate any other error, or do nothing when XREF processing is finished.
@@ -302,16 +302,16 @@ pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
 ///
 /// Returns an [`IDAError`] if the Hex-Rays decompiler license is not available for the target binary.
 fn recover_strings(idb: &mut IDB) -> Result<(), IDAError> {
-    for (_id, f) in idb.functions() {
-        if f.flags().contains(FunctionFlags::THUNK) {
+    for (_id, func) in idb.functions() {
+        if func.flags().contains(FunctionFlags::THUNK) {
             continue;
         }
 
         // Bail out early if the Hex-Rays decompiler license is not available, ignore other IDA errors.
-        if let Err(IDAError::HexRays(e)) = idb.decompile(&f)
-            && e.code() == HexRaysErrorCode::License
+        if let Err(IDAError::HexRays(err)) = idb.decompile(&func)
+            && err.code() == HexRaysErrorCode::License
         {
-            return Err(IDAError::HexRays(e));
+            return Err(IDAError::HexRays(err));
         }
     }
 
