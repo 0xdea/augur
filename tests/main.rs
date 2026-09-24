@@ -59,6 +59,16 @@ fn main() -> anyhow::Result<()> {
     );
     eprintln!("Ok.");
 
+    // Check that string uses recovered only by decompiling all functions upfront are present.
+    eprint!("[*] Checking string uses recovered via the decompiler are present... ");
+    let recovered_dir = dirpath.join("_4020A8_Parsing type error at line %d__");
+    assert!(
+        recovered_dir.is_dir() && recovered_dir.read_dir()?.next().is_some(),
+        "decompiler-recovered string use missing: {}",
+        recovered_dir.display()
+    );
+    eprintln!("Ok.");
+
     // Check `run` disables the new Hex-Rays argument name hints by default.
     eprint!("[*] Checking argument name hints are disabled by default... ");
     let sub_file = dirpath.join("_402108__atoi_").join("sub_401B00@401B00.c");

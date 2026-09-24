@@ -12,7 +12,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Build (requires IDADIR to be set at runtime, not just compile time)
 cargo build --release --locked
 
-# Run all tests (integration test against tests/data/ls binary)
+# Run all tests (integration test against tests/data/dox_sig_parser binary)
 cargo test --locked
 
 # Run the specific integration test
@@ -46,7 +46,7 @@ This is a **single-crate project** — no workspace, just `src/main.rs` (CLI ent
   - `traverse_xrefs()`: Iteratively walks the XREF chain; for each non-thunk function, calls `dump_function_pseudocode()` and increments the use count.
   - `filter_printable_chars()`: Returns only ASCII graphic characters and spaces — used to produce a human-readable string before passing to `sanitize_filename()`.
 
-- **`dump_function_pseudocode(idb, func, from, dirpath)`**: Free function that builds the output path via `haruspex::output_path_for_function`, creates the subdirectory, decompiles to file, and prints the result. Writes a `.c` pseudocode file plus a sibling `.h` file with type definitions when any exist; if `decompile_to_file` returns `HaruspexError::TypesEmpty` (no type defs to dump), only the `.c` file is written and a shorter, address-less line is printed.
+- **`dump_function_pseudocode(idb, func, from, dirpath)`**: Free function that builds the output path via `haruspex::output_path_for_function`, creates the subdirectory, decompiles to file, and prints the result. Writes a `.c` pseudocode file plus a sibling `.h` file with type definitions when any exist; if `decompile_to_file` returns `HaruspexError::TypesEmpty` (no type defs to dump), only the `.c` file is written and the printed line omits the header path.
 
 - **`recover_strings(idb: &mut IDB) -> Result<(), IDAError>`**: Free function that decompiles every non-thunk function upfront, discarding the output, to let IDA 9.4's decompiler recover additional strings. Then calls `idb.auto_wait()` (printing a warning if it returns `false`) followed by `idb.strings().rebuild()`. The decompiler only queues the new string items for auto-analysis, so without `auto_wait()` the rebuilt string list would not include them; keep these three steps together and in this order. Returns early with the error on a Hex-Rays license error; ignores all other decompilation errors.
 
@@ -84,15 +84,16 @@ All clippy lint groups (`all`, `pedantic`, `nursery`, `cargo`, `restriction`) ar
 
 **Unit tests** (`src/lib.rs`, `#[cfg(test)]`): cover `IDAString::filter_printable_chars`.
 
-**Integration test** (`tests/main.rs`): custom harness that runs against `tests/data/ls` (a real Linux `ls` binary) and asserts:
+**Integration test** (`tests/main.rs`): custom harness that runs against `tests/data/dox_sig_parser` and asserts:
 
-- Exactly 27 decompiled string uses
-- Exactly 26 output subdirectories
-- A specific total file count in the output tree
-- `_916D___libs__/main@2630.c` does not contain Hex-Rays argument name hints (regression test for the hints-disabled default)
-- `_905C_write error_/sub_4AD0@4AD0.c` exists and is non-empty (spot-checks naming and decompilation output)
-- `_905C_write error_/sub_4AD0@4AD0.h` does not exist (regression test for the `TypesEmpty` case: no header when there are no type defs)
-- `_9068_(NULL)_/sub_4B80@4B80.h` exists and is non-empty (regression test for the normal case: header written alongside the `.c` file)
+- Exactly 18 decompiled string uses (only 5 without the `recover_strings()` pre-pass)
+- Exactly 10 output subdirectories
+- A specific total file count in the output tree (subdirectories + `.c` files + `.h` files + the root; several uses in the same function share one `.c` file)
+- `_4020A8_Parsing type error at line %d__/` exists and is non-empty (regression test for `recover_strings()`: this string's uses are only found after decompiling all functions upfront)
+- `_402108__atoi_/sub_401B00@401B00.c` does not contain Hex-Rays argument name hints (regression test for the hints-disabled default)
+- `_4020C8_type ERROR_/sub_400C80@400C80.c` exists and is non-empty (spot-checks naming and decompilation output)
+- `_4020C8_type ERROR_/sub_401750@401750.h` does not exist (regression test for the `TypesEmpty` case: no header when there are no type defs)
+- `_4020C8_type ERROR_/sub_400C80@400C80.h` exists and is non-empty (regression test for the normal case: header written alongside the `.c` file)
 
 Test harness progress messages are printed to stderr.
 
