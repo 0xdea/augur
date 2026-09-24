@@ -43,10 +43,14 @@ This is a **single-crate project** — no workspace, just `src/main.rs` (CLI ent
 ### Key types and functions
 
 - **`IDAString`**: Wraps a `String` representing one binary string. Has two methods:
-  - `traverse_xrefs()`: Iteratively walks the XREF chain; for each non-thunk function, calls `dump_function_pseudocode()` and increments the use count.
+  - `traverse_xrefs()`: Iteratively walks the XREF chain; for each non-thunk function, calls `dump_function_pseudocode()` and increments the use count only if it returns `true`. A function that fails to decompile is skipped without affecting the string's other XREFs.
   - `filter_printable_chars()`: Returns only ASCII graphic characters and spaces — used to produce a human-readable string before passing to `sanitize_filename()`.
 
-- **`dump_function_pseudocode(idb, func, from, dirpath)`**: Free function that builds the output path via `haruspex::output_path_for_function`, creates the subdirectory, decompiles to file, and prints the result. Writes a `.c` pseudocode file plus a sibling `.h` file with type definitions when any exist; if `decompile_to_file` returns `HaruspexError::TypesEmpty` (no type defs to dump), only the `.c` file is written and the printed line omits the header path. Each function is decompiled at most once per run: a `HashMap<Address, DumpedFunction>` (keyed by function start address, shared across all strings) records the most recently written `.c` path and whether a `.h` was written (checked on disk via `header_path.is_file()`, because haruspex's `decompile_to_file` returns `Ok(())` even when dumping type definitions failed with a non-license IDA error); later uses of the same function are skipped if the output is already in place, or copied with `fs::copy` into the new string's directory, after which the entry points at the new copy. This relies on all uses of one string being handled in a single `traverse_xrefs()` call, so repeated uses within a string are never copied twice. This matters because idalib decompiles with `DECOMP_NO_CACHE`, so every `decompile()` call is a full decompilation.
+- **`DumpedFunction`**: Records the output files of a decompiled function: the most recently written `.c` path (`source`) and whether a sibling `.h` was written (`has_header`). Has two methods:
+  - `decompile_to(idb, func, dirpath, output_path) -> Result<Option<Self>, HaruspexError>`: Decompiles the function via `idb.decompile()` and writes the output files via haruspex's `dump_cfunc_pseudocode_to_file` and `dump_cfunc_types_to_file`. The string's subdirectory is only created once there is something to write, so no empty directories are left behind. Type definitions are best-effort: on `HaruspexError::TypesEmpty` or a non-license error while dumping them, only the `.c` file is written. Returns `Ok(None)` if the function can't be decompiled; Hex-Rays license errors are propagated.
+  - `copy_to(dirpath, output_path) -> io::Result<()>`: Copies the output files into another string's directory with `fs::copy`, then points `source` at the new copy. Does nothing if the files are already in place (including right after `decompile_to`).
+
+- **`dump_function_pseudocode(idb, func, from, dirpath, dumped) -> Result<bool, HaruspexError>`**: Free function that builds the output path via `haruspex::output_path_for_function`, makes the function's output files available in `dirpath`, and prints the result (the printed line omits the header path when there is no `.h`). Each function is decompiled at most once per run: `dumped` is a `HashMap<Address, Option<DumpedFunction>>` keyed by function start address and shared across all strings. On first use, the entry is filled with `DumpedFunction::decompile_to()`, where `None` records a function that failed to decompile so it is not retried; then `DumpedFunction::copy_to()` is called unconditionally, and copies the files only if they were dumped for another string. Returns `true` if the pseudocode was dumped; returns `false` and prints `{from:#X} in {func_name} -> [decompilation failed]` if the function can't be decompiled. Since all uses of one string are handled in a single `traverse_xrefs()` call, repeated uses within a string never copy the files twice. This matters because idalib decompiles with `DECOMP_NO_CACHE`, so every `decompile()` call is a full decompilation.
 
 - **`recover_strings(idb: &mut IDB) -> Result<(), IDAError>`**: Free function that decompiles every non-thunk function upfront, discarding the output, to let IDA 9.4's decompiler recover additional strings. Then calls `idb.auto_wait()` (printing a warning if it returns `false`) followed by `idb.strings().rebuild()`. The decompiler only queues the new string items for auto-analysis, so without `auto_wait()` the rebuilt string list would not include them; keep these three steps together and in this order. Returns early with the error on a Hex-Rays license error; ignores all other decompilation errors.
 
@@ -67,12 +71,13 @@ This is a **single-crate project** — no workspace, just `src/main.rs` (CLI ent
 - Uses `anyhow::Result<T>` throughout.
 - License errors from Hex-Rays trigger cleanup of the output directory and immediate exit.
 - Thunk functions are silently skipped.
+- Functions that fail to decompile are reported on stdout, skipped (not counted as string uses), and not retried.
 - If no string uses are found, the output directory is deleted and an error is returned.
 
 ### External dependencies
 
 - **idalib** (0.10): Rust bindings for IDA's idalib (headless SDK).
-- **haruspex** (0.10): Decompiler helper; provides `decompile_to_file`, `sanitize_filename`, `output_path_for_function`, and `prepare_output_dir`.
+- **haruspex** (0.10.1 or later): Decompiler helper; provides `dump_cfunc_pseudocode_to_file`, `dump_cfunc_types_to_file` (both added in 0.10.1), `sanitize_filename`, `output_path_for_function`, and `prepare_output_dir`.
 - **anyhow** (1.0): Error handling.
 - **idalib-build** (0.10): Build-time linkage configuration (used in `build.rs`).
 

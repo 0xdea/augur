@@ -23,7 +23,7 @@ exclude = [
 
 [dependencies]
 idalib = "0.10"
-haruspex = "0.10"
+haruspex = "0.10.1"
 anyhow = "1.0"
 
 [build-dependencies]
