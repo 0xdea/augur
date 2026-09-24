@@ -262,7 +262,7 @@ pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
                     &mut string_uses_count,
                     &mut dumped,
                 ) {
-                    // Cleanup and return an error if Hex-Rays decompiler license is not available.
+                    // Cleanup and return an error if the Hex-Rays decompiler license is not available.
                     Err(HaruspexError::DecompileFailed(IDAError::HexRays(err)))
                         if err.code() == HexRaysErrorCode::License =>
                     {
@@ -295,7 +295,7 @@ pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
     Ok(string_uses_count)
 }
 
-/// Decompiles all functions in the IDB to let IDA 9.4 recover additional strings, ignoring decompilation
+/// Decompiles all functions in the IDB to let IDA recover additional strings, ignoring decompilation
 /// errors, then rebuilds the string list.
 ///
 /// # Errors
@@ -303,6 +303,7 @@ pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
 /// Returns an [`IDAError`] if the Hex-Rays decompiler license is not available for the target binary.
 fn recover_strings(idb: &mut IDB) -> Result<(), IDAError> {
     for (_id, func) in idb.functions() {
+        // Skip the function if it has the `thunk` attribute.
         if func.flags().contains(FunctionFlags::THUNK) {
             continue;
         }
