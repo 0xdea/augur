@@ -106,23 +106,16 @@ impl From<String> for IDAString {
 pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
     let start = Instant::now();
 
-    // Workaround to leverage the full power of IDA to recover strings during compilation.
     eprintln!(
-        "[*] Fully decompiling binary file `{}`",
+        "[*] Analyzing binary file `{}`",
         filepath.as_ref().display()
     );
-    let mut idb_existed = false;
-    let idb_path = filepath.as_ref().with_extension("i64");
-    if idb_path.is_file() {
-        idb_existed = true;
-    }
-    decompile_binary(filepath.as_ref())?;
-    eprintln!("[+] Successfully decompiled binary file");
-    eprintln!();
-
-    eprintln!("[*] Analyzing IDB file `{}`", idb_path.display());
-    let mut idb = IDB::open(&idb_path)
-        .with_context(|| format!("Failed to analyze IDB file `{}`", idb_path.display()))?;
+    let mut idb = IDB::open(&filepath).with_context(|| {
+        format!(
+            "Failed to analyze binary file `{}`",
+            filepath.as_ref().display()
+        )
+    })?;
     eprintln!("[+] Successfully analyzed binary file");
     eprintln!();
 
@@ -136,6 +129,17 @@ pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
     // Disable argument name hints.
     idb.modify_decompiler_config(ArgHintsMode::Disabled.directive())
         .context("Failed to set decompiler's argument hints mode")?;
+
+    // Leverage the full power of IDA to recover strings during decompilation.
+    eprintln!("[*] Decompiling all functions and recovering strings...");
+    decompile_all_functions(&idb);
+    if idb.auto_wait() {
+        eprintln!("[+] Auto-analysis completed");
+    } else {
+        eprintln!("[!] Auto-analysis failed");
+    }
+    eprintln!();
+    idb.strings().rebuild();
 
     // Create a new output directory, returning an error if it already exists and it's not empty.
     let dirpath = filepath.as_ref().with_extension("str");
@@ -185,11 +189,6 @@ pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
         anyhow::bail!("No string uses were found, check your input file");
     }
 
-    // Remove the IDB file if it was not previously present.
-    if !idb_existed {
-        fs::remove_file(&idb_path)?;
-    }
-
     eprintln!();
     eprintln!(
         "[+] Found {string_uses_count} string uses in functions, decompiled into `{}`",
@@ -203,15 +202,8 @@ pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
     Ok(string_uses_count)
 }
 
-/// Fully decompiles the binary file at `filepath`.
-///
-/// # Errors
-///
-/// Returns an error if the analysis of the binary file fails. Ignores decompilation errors.
-fn decompile_binary(filepath: &Path) -> anyhow::Result<()> {
-    let idb = IDB::open_with(filepath, true, true)
-        .with_context(|| format!("Failed to decompile binary file `{}`", filepath.display()))?;
-
+/// Decompiles all functions in the IDB, ignoring decompilation errors.
+fn decompile_all_functions(idb: &IDB) {
     for (_id, f) in idb.functions() {
         if f.flags().contains(FunctionFlags::THUNK) {
             continue;
@@ -221,10 +213,6 @@ fn decompile_binary(filepath: &Path) -> anyhow::Result<()> {
             let _pseudocode = decomp.pseudocode();
         }
     }
-
-    // Explicitly drop the IDB
-    drop(idb);
-    Ok(())
 }
 
 /// Dumps pseudocode of `func` into `dirpath` and prints XREF address, function name, and output path on success.
