@@ -138,16 +138,10 @@ pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
     eprintln!();
     eprintln!("[*] Decompiling all functions and recovering strings...");
     // Cleanup and return an error if the Hex-Rays decompiler license is not available.
-    if let Err(e) = decompile_all_functions(&idb) {
+    if let Err(e) = recover_strings(&mut idb) {
         fs::remove_dir_all(&dirpath)?;
         return Err(e.into());
     }
-    if idb.auto_wait() {
-        eprintln!("[+] Auto-analysis completed");
-    } else {
-        eprintln!("[!] Auto-analysis failed");
-    }
-    idb.strings().rebuild();
 
     let mut string_uses_count = 0;
 
@@ -206,12 +200,13 @@ pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
     Ok(string_uses_count)
 }
 
-/// Decompiles all functions in the IDB, ignoring decompilation errors.
+/// Decompiles all functions in the IDB to let IDA 9.4 recover additional strings, ignoring decompilation
+/// errors, then rebuilds the string list.
 ///
 /// # Errors
 ///
 /// Returns an [`IDAError`] if the Hex-Rays decompiler license is not available for the target binary.
-fn decompile_all_functions(idb: &IDB) -> Result<(), IDAError> {
+fn recover_strings(idb: &mut IDB) -> Result<(), IDAError> {
     for (_id, f) in idb.functions() {
         if f.flags().contains(FunctionFlags::THUNK) {
             continue;
@@ -224,6 +219,12 @@ fn decompile_all_functions(idb: &IDB) -> Result<(), IDAError> {
             return Err(IDAError::HexRays(e));
         }
     }
+
+    // The decompiler queues new string items for auto-analysis, so wait for it before rebuilding.
+    if !idb.auto_wait() {
+        eprintln!("[!] Auto-analysis failed");
+    }
+    idb.strings().rebuild();
 
     Ok(())
 }
