@@ -137,7 +137,7 @@ pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
     // Leverage the full power of IDA to recover strings during decompilation.
     eprintln!();
     eprintln!("[*] Decompiling all functions and recovering strings...");
-    // Cleanup and return an error if Hex-Rays decompiler license is not available.
+    // Cleanup and return an error if the Hex-Rays decompiler license is not available.
     if let Err(e) = decompile_all_functions(&idb) {
         fs::remove_dir_all(&dirpath)?;
         return Err(e.into());
@@ -217,18 +217,11 @@ fn decompile_all_functions(idb: &IDB) -> Result<(), IDAError> {
             continue;
         }
 
-        match idb.decompile(&f) {
-            Ok(decomp) => {
-                let _pseudocode = decomp.pseudocode();
-            }
-
-            // Bail out early if Hex-Rays decompiler license is not available.
-            Err(IDAError::HexRays(e)) if e.code() == HexRaysErrorCode::License => {
-                return Err(IDAError::HexRays(e));
-            }
-
-            // Ignore other IDA errors.
-            Err(_) => {}
+        // Bail out early if the Hex-Rays decompiler license is not available, ignore other IDA errors.
+        if let Err(IDAError::HexRays(e)) = idb.decompile(&f)
+            && e.code() == HexRaysErrorCode::License
+        {
+            return Err(IDAError::HexRays(e));
         }
     }
 
