@@ -130,20 +130,24 @@ pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
     idb.modify_decompiler_config(ArgHintsMode::Disabled.directive())
         .context("Failed to set decompiler's argument hints mode")?;
 
+    // Create a new output directory, returning an error if it already exists and it's not empty.
+    let dirpath = filepath.as_ref().with_extension("str");
+    prepare_output_dir(&dirpath)?;
+
     // Leverage the full power of IDA to recover strings during decompilation.
+    eprintln!();
     eprintln!("[*] Decompiling all functions and recovering strings...");
-    decompile_all_functions(&idb);
+    // Cleanup and return an error if Hex-Rays decompiler license is not available.
+    if let Err(e) = decompile_all_functions(&idb) {
+        fs::remove_dir_all(&dirpath)?;
+        return Err(e.into());
+    }
     if idb.auto_wait() {
         eprintln!("[+] Auto-analysis completed");
     } else {
         eprintln!("[!] Auto-analysis failed");
     }
-    eprintln!();
     idb.strings().rebuild();
-
-    // Create a new output directory, returning an error if it already exists and it's not empty.
-    let dirpath = filepath.as_ref().with_extension("str");
-    prepare_output_dir(&dirpath)?;
 
     let mut string_uses_count = 0;
 
@@ -203,16 +207,32 @@ pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
 }
 
 /// Decompiles all functions in the IDB, ignoring decompilation errors.
-fn decompile_all_functions(idb: &IDB) {
+///
+/// # Errors
+///
+/// Returns an [`IDAError`] if the Hex-Rays decompiler license is not available for the target binary.
+fn decompile_all_functions(idb: &IDB) -> Result<(), IDAError> {
     for (_id, f) in idb.functions() {
         if f.flags().contains(FunctionFlags::THUNK) {
             continue;
         }
 
-        if let Ok(decomp) = idb.decompile(&f) {
-            let _pseudocode = decomp.pseudocode();
+        match idb.decompile(&f) {
+            Ok(decomp) => {
+                let _pseudocode = decomp.pseudocode();
+            }
+
+            // Bail out early if Hex-Rays decompiler license is not available.
+            Err(IDAError::HexRays(e)) if e.code() == HexRaysErrorCode::License => {
+                return Err(IDAError::HexRays(e));
+            }
+
+            // Ignore other IDA errors.
+            Err(_) => {}
         }
     }
+
+    Ok(())
 }
 
 /// Dumps pseudocode of `func` into `dirpath` and prints XREF address, function name, and output path on success.
