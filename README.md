@@ -23,7 +23,7 @@ It stores pseudocode of functions that reference strings in an organized directo
 - Blazing fast, headless user experience courtesy of IDA 9.x and idalib-rs Rust bindings.
 - Support for binary targets for any architecture implemented by IDA's Hex-Rays decompiler.
 - Decompilation feature based on the `decompile_to_file` API exported by [haruspex](https://github.com/0xdea/haruspex).
-- All functions are decompiled upfront, to allow IDA 9.4 to [recover additional strings](https://docs.hex-rays.com/release-notes/9_4#decompiler-strings) (this makes processing slower on large binaries).
+- All functions are decompiled upfront, to allow IDA to [recover additional strings](https://docs.hex-rays.com/release-notes/9_4#decompiler-strings).
 - Pseudocode of each function that references a specific string is stored in a separate directory.
 - Type definitions used by a decompiled function are dumped alongside its pseudocode in a matching `.h` file, when available.
 

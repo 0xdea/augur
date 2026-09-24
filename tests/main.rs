@@ -9,15 +9,17 @@ use walkdir::WalkDir;
 #[expect(clippy::panic_in_result_fn, reason = "panics are allowed in test code")]
 fn main() -> anyhow::Result<()> {
     // Target binary path.
-    const FILENAME: &str = "./tests/data/ls";
+    const FILENAME: &str = "./tests/data/dox_sig_parser";
     // Expected number of string uses in functions.
-    const N_USES: usize = 27;
+    const N_USES: usize = 18;
     // Expected number of subdirectories.
-    const N_SUBDIRS: usize = 26;
+    const N_SUBDIRS: usize = 10;
+    // Expected number of source files.
+    const N_SOURCES: usize = 11;
     // Expected number of header files.
-    const N_HEADERS: usize = 11;
+    const N_HEADERS: usize = 8;
     // Expected number of files in the output directory and all subdirectories.
-    const N_FILES: usize = N_USES + N_SUBDIRS + N_HEADERS + 1;
+    const N_FILES: usize = N_SUBDIRS + N_SOURCES + N_HEADERS + 1;
 
     // Remove the IDB file if it exists.
     let idb_path = Path::new(FILENAME).with_extension("i64");
@@ -59,20 +61,20 @@ fn main() -> anyhow::Result<()> {
 
     // Check `run` disables the new Hex-Rays argument name hints by default.
     eprint!("[*] Checking argument name hints are disabled by default... ");
-    let main_file = dirpath.join("_916D___libs__").join("main@2630.c");
-    let main_content = fs::read_to_string(&main_file)?;
+    let sub_file = dirpath.join("_402108__atoi_").join("sub_401B00@401B00.c");
+    let sub_content = fs::read_to_string(&sub_file)?;
     assert!(
-        main_content.contains(
-            r#"fwrite("A NULL argv[0] was passed through an exec system call.\n", 1u, 0x37u, stderr);"#
-        ),
+        sub_content.contains(r#"printf("%s(): Num can't be NULL.\n", "_atoi");"#),
         "output file `{}` contains argument name hints, expected them to be disabled",
-        main_file.display()
+        sub_file.display()
     );
     eprintln!("Ok.");
 
     // Spot-check a known output file: verify the naming scheme and that decompilation produced output.
     eprint!("[*] Checking known output file exists and is non-empty... ");
-    let known_file = dirpath.join("_905C_write error_").join("sub_4AD0@4AD0.c");
+    let known_file = dirpath
+        .join("_4020C8_type ERROR_")
+        .join("sub_400C80@400C80.c");
     assert!(
         known_file.is_file(),
         "expected output file missing: {}",
@@ -87,7 +89,9 @@ fn main() -> anyhow::Result<()> {
 
     // Check that a function with no type definitions to dump produces no header file.
     eprint!("[*] Checking function with no type definitions has no header file... ");
-    let missing_header = dirpath.join("_905C_write error_").join("sub_4AD0@4AD0.h");
+    let missing_header = dirpath
+        .join("_4020C8_type ERROR_")
+        .join("sub_401750@401750.h");
     assert!(
         !missing_header.exists(),
         "unexpected header file present: {}",
@@ -97,7 +101,9 @@ fn main() -> anyhow::Result<()> {
 
     // Check that a function with type definitions produces a matching, non-empty header file.
     eprint!("[*] Checking known header file exists and is non-empty... ");
-    let known_header = dirpath.join("_9068_(NULL)_").join("sub_4B80@4B80.h");
+    let known_header = dirpath
+        .join("_4020C8_type ERROR_")
+        .join("sub_400C80@400C80.h");
     assert!(
         known_header.is_file(),
         "expected header file missing: {}",

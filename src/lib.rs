@@ -265,7 +265,7 @@ fn dump_function_pseudocode(
 
         // Pseudocode was written, but there were no type definitions to dump.
         Err(HaruspexError::TypesEmpty) => {
-            println!("{func_name} -> `{}`", output_path.display());
+            println!("{from:#X} in {func_name} -> `{}`", output_path.display());
             Ok(())
         }
 
