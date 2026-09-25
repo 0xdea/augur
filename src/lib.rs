@@ -153,18 +153,14 @@ pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
     prepare_output_dir(&dirpath)?;
 
     // Remove the output directory, which is empty or only partially populated, if anything goes wrong.
-    let string_uses_count = match extract_string_uses(&mut idb, &dirpath) {
-        Ok(count) => count,
-        Err(err) => {
-            if let Err(cleanup_err) = fs::remove_dir_all(&dirpath) {
-                eprintln!(
-                    "[!] Failed to remove directory `{}`: {cleanup_err}",
-                    dirpath.display()
-                );
-            }
-            return Err(err);
+    let string_uses_count = extract_string_uses(&mut idb, &dirpath).inspect_err(|_| {
+        if let Err(cleanup_err) = fs::remove_dir_all(&dirpath) {
+            eprintln!(
+                "[!] Failed to remove directory `{}`: {cleanup_err}",
+                dirpath.display()
+            );
         }
-    };
+    })?;
 
     eprintln!();
     eprintln!(
