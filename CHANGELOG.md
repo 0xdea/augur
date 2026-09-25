@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add an integration test for binaries without string uses, checking that the output directory is removed on error.
+
 ### Changed
 
 - Decompile each function only once, reusing its output files for further string uses.

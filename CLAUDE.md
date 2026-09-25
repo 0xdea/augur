@@ -12,7 +12,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Build (requires IDADIR to be set at runtime, not just compile time)
 cargo build --release --locked
 
-# Run all tests (integration test against tests/data/dox_sig_parser binary)
+# Run all tests (integration tests against tests/data/dox_sig_parser and tests/data/no_strings binaries)
 cargo test --locked
 
 # Run the specific integration test
@@ -95,7 +95,7 @@ All clippy lint groups (`all`, `pedantic`, `nursery`, `cargo`, `restriction`) ar
 
 **Unit tests** (`src/lib.rs`, `#[cfg(test)]`): cover `filter_printable_chars`.
 
-**Integration test** (`tests/main.rs`): custom harness that runs against `tests/data/dox_sig_parser` and asserts:
+**Integration tests** (`tests/main.rs`): custom harness (`harness = false`) whose `main()` calls one function per target binary, which runs augur and then calls one `check_*()` function per assertion; each check prints its own `[*] Checking ...` progress line. `reset_output()` removes any stale IDB file and output directory before each run, and the expected counts are module-level constants. `test_binary_with_string_uses()` runs against `tests/data/dox_sig_parser` and asserts:
 
 - Exactly 18 decompiled string uses (only 5 without the `recover_strings()` pre-pass)
 - Exactly 10 output subdirectories
@@ -106,6 +106,11 @@ All clippy lint groups (`all`, `pedantic`, `nursery`, `cargo`, `restriction`) ar
 - `_4020C8_type ERROR_/sub_401750@401750.h` does not exist (regression test for the `TypesEmpty` case: no header when there are no type defs)
 - `_4020C8_type ERROR_/sub_400C80@400C80.h` exists and is non-empty (regression test for the normal case: header written alongside the `.c` file)
 
-Test harness progress messages are printed to stderr.
+`test_binary_without_string_uses()` then runs against `tests/data/no_strings`, a minimal macOS arm64 Mach-O binary built from `tests/data/no_strings.c` (`cc -O0 -o no_strings no_strings.c`), and asserts:
+
+- `run()` returns the "No string uses were found" error
+- The output directory `no_strings.str/` does not exist afterwards (regression test for the single cleanup point in `run()`)
+
+Both binaries are analyzed sequentially in the same process, each with its own `IDB::open()`. Test harness progress messages are printed to stderr.
 
 Uses the `walkdir` dev-dependency. Requires a live IDA installation.
