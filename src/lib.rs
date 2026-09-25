@@ -201,10 +201,7 @@ fn extract_string_uses(idb: &mut IDB, dirpath: &Path) -> anyhow::Result<usize> {
 
         // Traverse XREFs to string and dump the related pseudocode and type definitions to the output files.
         if let Some(xref) = idb.first_xref_to(addr, XRefQuery::ALL) {
-            let string_dirpath = dirpath.join(format!(
-                "_{addr:X}_{}_",
-                sanitize_filename(&filter_printable_chars(&string))
-            ));
+            let string_dirpath = dirpath.join(string_dirname(addr, &string));
             let count = traverse_xrefs(idb, xref, &string_dirpath, &mut dumped)?;
             string_uses_count = string_uses_count.saturating_add(count);
         }
@@ -353,6 +350,17 @@ fn is_license_error(err: &IDAError) -> bool {
     matches!(err, IDAError::HexRays(hexrays_err) if hexrays_err.code() == HexRaysErrorCode::License)
 }
 
+/// Returns the name of the output subdirectory for `string` at `addr`, i.e., `_{addr:X}_{sanitized_string}_`.
+///
+/// Only the printable chars in `string` are kept, and reserved chars (including path separators) are replaced,
+/// so that the name is always a single path component inside the output directory.
+fn string_dirname(addr: Address, string: &str) -> String {
+    format!(
+        "_{addr:X}_{}_",
+        sanitize_filename(&filter_printable_chars(string))
+    )
+}
+
 /// Returns only the printable chars in `string`, i.e., ASCII graphic chars and spaces.
 fn filter_printable_chars(string: &str) -> String {
     string
@@ -362,8 +370,141 @@ fn filter_printable_chars(string: &str) -> String {
 }
 
 #[cfg(test)]
+#[expect(clippy::panic_in_result_fn, reason = "panics are allowed in test code")]
 mod tests {
+    use std::path::Component;
+    use std::{env, process};
+
     use super::*;
+
+    /// Returns a fresh, empty temporary directory scoped to `label` and the current process.
+    fn test_dir(label: &str) -> io::Result<PathBuf> {
+        let dir = env::temp_dir().join(format!("augur_{label}_{}", process::id()));
+        if dir.exists() {
+            fs::remove_dir_all(&dir)?;
+        }
+        fs::create_dir_all(&dir)?;
+        Ok(dir)
+    }
+
+    /// Writes a `.c` file (and optionally a `.h` file) at `source` and returns the matching [`DumpedFunction`].
+    fn dumped_function(source: PathBuf, has_header: bool) -> io::Result<DumpedFunction> {
+        fs::write(&source, "pseudocode")?;
+        if has_header {
+            fs::write(source.with_extension("h"), "types")?;
+        }
+        Ok(DumpedFunction { source, has_header })
+    }
+
+    #[test]
+    fn copy_to_does_nothing_if_files_are_already_in_place() -> io::Result<()> {
+        let dir = test_dir("copy_in_place")?;
+        let source = dir.join("func@1000.c");
+        let mut dumped_func = dumped_function(source.clone(), true)?;
+
+        dumped_func.copy_to(&dir, &source)?;
+
+        assert_eq!(dumped_func.source, source, "source should be unchanged");
+        assert_eq!(
+            dir.read_dir()?.count(),
+            2,
+            "no files should be added or removed"
+        );
+        fs::remove_dir_all(&dir)
+    }
+
+    #[test]
+    fn copy_to_copies_source_and_header_and_tracks_the_copy() -> io::Result<()> {
+        let dir = test_dir("copy_header")?;
+        let dirpath = dir.join("string_b");
+        fs::create_dir_all(&dirpath)?;
+        let mut dumped_func = dumped_function(dir.join("func@1000.c"), true)?;
+        let output_path = dirpath.join("func@1000.c");
+
+        dumped_func.copy_to(&dirpath, &output_path)?;
+
+        assert_eq!(
+            fs::read_to_string(&output_path)?,
+            "pseudocode",
+            "source file should be copied"
+        );
+        assert_eq!(
+            fs::read_to_string(output_path.with_extension("h"))?,
+            "types",
+            "header file should be copied"
+        );
+        assert_eq!(
+            dumped_func.source, output_path,
+            "source should point at the copy, so that further uses of the same string don't copy it again"
+        );
+        fs::remove_dir_all(&dir)
+    }
+
+    #[test]
+    fn copy_to_without_header_copies_only_source() -> io::Result<()> {
+        let dir = test_dir("copy_no_header")?;
+        let dirpath = dir.join("string_b");
+        fs::create_dir_all(&dirpath)?;
+        let mut dumped_func = dumped_function(dir.join("func@1000.c"), false)?;
+        let output_path = dirpath.join("func@1000.c");
+
+        dumped_func.copy_to(&dirpath, &output_path)?;
+
+        assert!(output_path.is_file(), "source file should be copied");
+        assert!(
+            !output_path.with_extension("h").exists(),
+            "no header file should be created"
+        );
+        fs::remove_dir_all(&dir)
+    }
+
+    #[test]
+    fn copy_to_creates_missing_output_directory() -> io::Result<()> {
+        let dir = test_dir("copy_missing_dir")?;
+        let dirpath = dir.join("string_b");
+        let mut dumped_func = dumped_function(dir.join("func@1000.c"), false)?;
+        let output_path = dirpath.join("func@1000.c");
+
+        dumped_func.copy_to(&dirpath, &output_path)?;
+
+        assert!(dirpath.is_dir(), "output directory should be created");
+        assert!(output_path.is_file(), "source file should be copied");
+        fs::remove_dir_all(&dir)
+    }
+
+    #[test]
+    fn string_dirname_wraps_uppercase_hex_address_and_string() {
+        assert_eq!(
+            string_dirname(0xDEAD_BEEF, "type ERROR"),
+            "_DEADBEEF_type ERROR_",
+            "wrong directory name format"
+        );
+    }
+
+    #[test]
+    fn string_dirname_strips_non_printable_chars() {
+        assert_eq!(
+            string_dirname(0x1000, "line\n\tbreak\x00"),
+            "_1000_linebreak_",
+            "non-printable chars should be stripped"
+        );
+    }
+
+    #[test]
+    fn string_dirname_does_not_allow_path_traversal() {
+        let name = string_dirname(0x1000, "../../etc/passwd");
+        assert!(
+            !name.contains(['/', '.']),
+            "path separators and dots should be replaced: {name}"
+        );
+        assert!(
+            matches!(
+                Path::new(&name).components().collect::<Vec<_>>().as_slice(),
+                [Component::Normal(_)]
+            ),
+            "name should be a single normal path component: {name}"
+        );
+    }
 
     #[test]
     fn filter_printable_chars_keeps_ascii_graphic_chars() {

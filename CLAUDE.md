@@ -54,11 +54,13 @@ This is a **single-crate project** — no workspace, just `src/main.rs` (CLI ent
 
 - **`recover_strings(idb: &mut IDB) -> Result<(), IDAError>`**: Free function that decompiles every non-thunk function upfront, discarding the output, to let IDA 9.4's decompiler recover additional strings. Then calls `idb.auto_wait()` (printing a warning if it returns `false`) followed by `idb.strings().rebuild()`. The decompiler only queues the new string items for auto-analysis, so without `auto_wait()` the rebuilt string list would not include them; keep these three steps together and in this order. Returns early with the error on a Hex-Rays license error; ignores all other decompilation errors.
 
-- **`extract_string_uses(idb: &mut IDB, dirpath) -> anyhow::Result<usize>`**: Free function holding all the work that writes into the output directory. Calls `recover_strings()`, then iterates `idb.strings().iter()` (which skips invalid entries in the string list), and for each string with at least one XREF builds its subdirectory name `_{addr:X}_{sanitized_string}_` (via `filter_printable_chars()` and `sanitize_filename()`) and dispatches `traverse_xrefs()`, summing the returned counts with `saturating_add`. Returns an error if no string uses were found.
+- **`extract_string_uses(idb: &mut IDB, dirpath) -> anyhow::Result<usize>`**: Free function holding all the work that writes into the output directory. Calls `recover_strings()`, then iterates `idb.strings().iter()` (which skips invalid entries in the string list), and for each string with at least one XREF builds its subdirectory name via `string_dirname()` and dispatches `traverse_xrefs()`, summing the returned counts with `saturating_add`. Returns an error if no string uses were found.
 
 - **`run(filepath: impl AsRef<Path>) -> anyhow::Result<usize>`**: Public entry point. Opens the binary via `IDB::open()`, disables the Hex-Rays argument name hints via `idb.modify_decompiler_config(ArgHintsMode::Disabled.directive())` (before any decompilation, so that every decompilation, including the `recover_strings()` pre-pass, picks up the config change), calls `haruspex::prepare_output_dir()` to set up the `<binary>.str/` directory (before the slow pre-pass, so an existing non-empty directory fails fast), then calls `extract_string_uses()` and returns its total use count. This is the single cleanup point: if `extract_string_uses()` returns any error (including no string uses found), the output directory is removed and the original error is returned; if removing the directory fails too, a warning is printed to stderr. Informational/progress messages go to stderr; only the per-string and per-function result lines (address, name, output path) go to stdout. Prints total elapsed time on completion.
 
 - **`is_license_error(err: &IDAError) -> bool`**: Returns `true` for a Hex-Rays license error. Used by every place that must stop on license errors while ignoring other decompilation errors. Matching `&IDAError` relies on default binding modes, which is why `clippy::pattern_type_mismatch` is allowed in `Cargo.toml`.
+
+- **`string_dirname(addr, string: &str) -> String`**: Returns the output subdirectory name `_{addr:X}_{sanitized_string}_`, via `filter_printable_chars()` and haruspex's `sanitize_filename()`. Since the string comes from the analyzed binary, the name must always be a single path component: `sanitize_filename()` replaces `/` and `.` on every platform, which prevents path traversal.
 
 - **`filter_printable_chars(string: &str) -> String`**: Returns only ASCII graphic characters and spaces — used to produce a human-readable string before passing to `sanitize_filename()`.
 
@@ -93,7 +95,13 @@ All clippy lint groups (`all`, `pedantic`, `nursery`, `cargo`, `restriction`) ar
 
 ## Tests
 
-**Unit tests** (`src/lib.rs`, `#[cfg(test)]`): cover `filter_printable_chars`.
+**Unit tests** (`src/lib.rs`, `#[cfg(test)]`): don't need an IDA database, and cover:
+
+- `filter_printable_chars`
+- `string_dirname`: name format, stripping of non-printable chars, and no path traversal (the result must be a single `Component::Normal`)
+- `DumpedFunction::copy_to`: no-op when the files are already in place, copying `.c` and `.h` and repointing `source` (regression test for copying the same files twice), copying only the `.c` without a header, and creating a missing output directory. These use per-test temporary directories created by `test_dir()` under `env::temp_dir()`, scoped to a label and the process ID.
+
+The tests module has `#[expect(clippy::panic_in_result_fn)]`, since the file-system tests return `io::Result<()>`.
 
 **Integration tests** (`tests/main.rs`): custom harness (`harness = false`) whose `main()` calls one function per target binary, which runs augur and then calls one `check_*()` function per assertion; each check prints its own `[*] Checking ...` progress line. `reset_output()` removes any stale IDB file and output directory before each run, and the expected counts are module-level constants. `test_binary_with_string_uses()` runs against `tests/data/dox_sig_parser` and asserts:
 

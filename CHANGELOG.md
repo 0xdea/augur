@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Add an integration test for binaries without string uses, checking that the output directory is removed on error.
+- Add unit tests for output directory naming, including a path traversal check, and for reusing output files.
 
 ### Changed
 
