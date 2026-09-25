@@ -116,11 +116,13 @@ impl DumpedFunction {
 /// Extracts strings and pseudocode/type definitions of each function that references them from the
 /// binary at `filepath` and saves them in `filepath.str`.
 ///
-/// Returns the number of locations where strings are referenced.
+/// Returns the number of string uses in functions whose pseudocode was dumped.
 ///
 /// # Errors
 ///
-/// Returns [`anyhow::Error`] in case something goes wrong with analyzing the binary file or decompiling functions.
+/// Returns [`anyhow::Error`] if the binary file cannot be analyzed, if the decompiler or its license is not
+/// available, if the output directory already exists and is not empty, if the output files cannot be created,
+/// or if no string uses were found. On any error after the output directory is created, the directory is removed.
 pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
     let start = Instant::now();
 
@@ -284,7 +286,8 @@ fn traverse_xrefs(
     Ok(string_uses_count)
 }
 
-/// Dumps pseudocode of `func` into `dirpath` and prints XREF address, function name, and output path.
+/// Dumps pseudocode of `func` into `dirpath` and prints XREF address, function name, and output path (or a
+/// failure notice if `func` cannot be decompiled).
 ///
 /// Alongside the `.c` pseudocode file, a sibling `.h` file with `func`'s type definitions is written
 /// when any are available; if there are none, only the `.c` file is produced.
@@ -352,8 +355,9 @@ fn is_license_error(err: &IDAError) -> bool {
 
 /// Returns the name of the output subdirectory for `string` at `addr`, i.e., `_{addr:X}_{sanitized_string}_`.
 ///
-/// Only the printable chars in `string` are kept, and reserved chars (including path separators) are replaced,
-/// so that the name is always a single path component inside the output directory.
+/// Only the printable chars in `string` are kept, reserved chars (including path separators) are replaced, and
+/// the result is truncated by haruspex's `sanitize_filename`, so that the name is always a single path component
+/// inside the output directory.
 fn string_dirname(addr: Address, string: &str) -> String {
     format!(
         "_{addr:X}_{}_",

@@ -15,7 +15,7 @@ cargo build --release --locked
 # Run all tests (integration tests against tests/data/dox_sig_parser and tests/data/no_strings binaries)
 cargo test --locked
 
-# Run the specific integration test
+# Run only the integration tests
 cargo test --test tests --locked
 
 # Lint
@@ -56,11 +56,11 @@ This is a **single-crate project** — no workspace, just `src/main.rs` (CLI ent
 
 - **`extract_string_uses(idb: &mut IDB, dirpath) -> anyhow::Result<usize>`**: Free function holding all the work that writes into the output directory. Calls `recover_strings()`, then iterates `idb.strings().iter()` (which skips invalid entries in the string list), and for each string with at least one XREF builds its subdirectory name via `string_dirname()` and dispatches `traverse_xrefs()`, summing the returned counts with `saturating_add`. Returns an error if no string uses were found.
 
-- **`run(filepath: impl AsRef<Path>) -> anyhow::Result<usize>`**: Public entry point. Opens the binary via `IDB::open()`, disables the Hex-Rays argument name hints via `idb.modify_decompiler_config(ArgHintsMode::Disabled.directive())` (before any decompilation, so that every decompilation, including the `recover_strings()` pre-pass, picks up the config change), calls `haruspex::prepare_output_dir()` to set up the `<binary>.str/` directory (before the slow pre-pass, so an existing non-empty directory fails fast), then calls `extract_string_uses()` and returns its total use count. This is the single cleanup point: if `extract_string_uses()` returns any error (including no string uses found), the output directory is removed and the original error is returned; if removing the directory fails too, a warning is printed to stderr. Informational/progress messages go to stderr; only the per-string and per-function result lines (address, name, output path) go to stdout. Prints total elapsed time on completion.
+- **`run(filepath: impl AsRef<Path>) -> anyhow::Result<usize>`**: Public entry point. Opens the binary via `IDB::open()`, disables the Hex-Rays argument name hints via `idb.modify_decompiler_config(ArgHintsMode::Disabled.directive())` (before any decompilation, so that every decompilation, including the `recover_strings()` pre-pass, picks up the config change), calls `haruspex::prepare_output_dir()` to set up the `<binary>.str/` directory, then calls `extract_string_uses()` and returns its total use count. `prepare_output_dir()` must stay before `extract_string_uses()` and outside the cleanup: this makes an existing non-empty directory fail fast, before the slow pre-pass, and ensures the cleanup never deletes a pre-existing directory with the user's previous results. This is the single cleanup point: if `extract_string_uses()` returns any error (including no string uses found), the output directory is removed and the original error is returned; if removing the directory fails too, a warning is printed to stderr. Informational/progress messages go to stderr; only the per-string and per-function result lines (address, name, output path) go to stdout. Prints total elapsed time on completion.
 
 - **`is_license_error(err: &IDAError) -> bool`**: Returns `true` for a Hex-Rays license error. Used by every place that must stop on license errors while ignoring other decompilation errors. Matching `&IDAError` relies on default binding modes, which is why `clippy::pattern_type_mismatch` is allowed in `Cargo.toml`.
 
-- **`string_dirname(addr, string: &str) -> String`**: Returns the output subdirectory name `_{addr:X}_{sanitized_string}_`, via `filter_printable_chars()` and haruspex's `sanitize_filename()`. Since the string comes from the analyzed binary, the name must always be a single path component: `sanitize_filename()` replaces `/` and `.` on every platform, which prevents path traversal.
+- **`string_dirname(addr, string: &str) -> String`**: Returns the output subdirectory name `_{addr:X}_{sanitized_string}_`, via `filter_printable_chars()` and haruspex's `sanitize_filename()` (which also truncates the string to 64 chars). Since the string comes from the analyzed binary, the name must always be a single path component: `sanitize_filename()` replaces `/` and `.` on every platform, which prevents path traversal.
 
 - **`filter_printable_chars(string: &str) -> String`**: Returns only ASCII graphic characters and spaces — used to produce a human-readable string before passing to `sanitize_filename()`.
 
@@ -79,13 +79,14 @@ This is a **single-crate project** — no workspace, just `src/main.rs` (CLI ent
 - Uses `anyhow::Result<T>` throughout.
 - Any error after the output directory is created (including Hex-Rays license errors and I/O errors) removes the output directory and exits with that error. `run()` is the only place that performs this cleanup.
 - Thunk functions are silently skipped.
+- XREFs outside any function are printed as `{from:#X} in [unknown]` on stdout and not counted as string uses.
 - Functions that fail to decompile are reported on stdout, skipped (not counted as string uses), and not retried.
 - If no string uses are found, the output directory is deleted and an error is returned.
 
 ### External dependencies
 
 - **idalib** (0.10): Rust bindings for IDA's idalib (headless SDK).
-- **haruspex** (0.10.1 or later): Decompiler helper; provides `dump_cfunc_pseudocode_to_file`, `dump_cfunc_types_to_file` (both added in 0.10.1), `sanitize_filename`, `output_path_for_function`, and `prepare_output_dir`.
+- **haruspex** (0.10.1 or later): Decompiler helper; provides `dump_cfunc_pseudocode_to_file`, `dump_cfunc_types_to_file` (both added in 0.10.1), `sanitize_filename`, `output_path_for_function`, `prepare_output_dir`, `ArgHintsMode`, and `HaruspexError`.
 - **anyhow** (1.0): Error handling.
 - **idalib-build** (0.10): Build-time linkage configuration (used in `build.rs`).
 

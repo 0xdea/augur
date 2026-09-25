@@ -89,7 +89,7 @@ Alternatively, you can build from [source](https://github.com/0xdea/augur):
    ```sh
    augur <binary_file>
    ```
-4. Find the extracted pseudocode and type definitions of each decompiled function in the `binary_file.str` directory, organized by string:
+4. Find the extracted pseudocode and type definitions of each decompiled function in the `<binary_file>.str` directory, organized by string:
    ```sh
    vim <binary_file>.str
    code <binary_file>.str
