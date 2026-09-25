@@ -8,7 +8,7 @@ use std::collections::hash_map::Entry;
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
-use std::{fs, io};
+use std::{fs, io, iter};
 
 use anyhow::Context as _;
 use haruspex::{
@@ -39,8 +39,8 @@ struct DumpedFunction {
 }
 
 impl DumpedFunction {
-    /// Decompiles `func` and writes its output files at `output_path` in `dirpath`, creating `dirpath` only
-    /// once there is something to write in it.
+    /// Decompiles `func` and writes its output files at `output_path`, creating the parent directory of
+    /// `output_path` only once there is something to write in it.
     ///
     /// Type definitions are best-effort: the `.h` file is only written if there are any, and a failure to
     /// dump them is ignored. Returns `None` if `func` cannot be decompiled.
@@ -52,7 +52,6 @@ impl DumpedFunction {
     fn decompile_to(
         idb: &IDB,
         func: &Function<'_>,
-        dirpath: &Path,
         output_path: &Path,
     ) -> Result<Option<Self>, HaruspexError> {
         let cfunc = match idb.decompile(func) {
@@ -66,7 +65,7 @@ impl DumpedFunction {
         };
 
         // Only create the output directory once there is something to write in it.
-        fs::create_dir_all(dirpath)?;
+        create_parent_dir(output_path)?;
         dump_cfunc_pseudocode_to_file(&cfunc, output_path)?;
 
         let has_header =
@@ -91,15 +90,15 @@ impl DumpedFunction {
         }))
     }
 
-    /// Makes the output files available at `output_path` in `dirpath`, copying them from their previous
-    /// location unless they are already in place, then tracks the copy so the files aren't copied again.
+    /// Makes the output files available at `output_path`, copying them from their previous location unless
+    /// they are already in place, then tracks the copy so the files aren't copied again.
     ///
     /// # Errors
     ///
     /// Returns [`io::Error`] if the output directory cannot be created or the output files cannot be copied.
-    fn copy_to(&mut self, dirpath: &Path, output_path: &Path) -> io::Result<()> {
+    fn copy_to(&mut self, output_path: &Path) -> io::Result<()> {
         if self.source != output_path {
-            fs::create_dir_all(dirpath)?;
+            create_parent_dir(output_path)?;
             fs::copy(&self.source, output_path)?;
             if self.has_header {
                 fs::copy(
@@ -123,19 +122,17 @@ impl DumpedFunction {
 /// Returns [`anyhow::Error`] if the binary file cannot be analyzed, if the decompiler or its license is not
 /// available, if the output directory already exists and is not empty, if the output files cannot be created,
 /// or if no string uses were found. On any error after the output directory is created, the directory is removed.
+#[expect(
+    clippy::shadow_reuse,
+    reason = "shadowing is convenient and idiomatic here"
+)]
 pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
     let start = Instant::now();
+    let filepath = filepath.as_ref();
 
-    eprintln!(
-        "[*] Analyzing binary file `{}`",
-        filepath.as_ref().display()
-    );
-    let mut idb = IDB::open(&filepath).with_context(|| {
-        format!(
-            "Failed to analyze binary file `{}`",
-            filepath.as_ref().display()
-        )
-    })?;
+    eprintln!("[*] Analyzing binary file `{}`", filepath.display());
+    let mut idb = IDB::open(filepath)
+        .with_context(|| format!("Failed to analyze binary file `{}`", filepath.display()))?;
     eprintln!("[+] Successfully analyzed binary file");
     eprintln!();
 
@@ -151,7 +148,7 @@ pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
         .context("Failed to set decompiler's argument hints mode")?;
 
     // Create a new output directory, returning an error if it already exists and it's not empty.
-    let dirpath = filepath.as_ref().with_extension("str");
+    let dirpath = filepath.with_extension("str");
     prepare_output_dir(&dirpath)?;
 
     // Remove the output directory, which is empty or only partially populated, if anything goes wrong.
@@ -171,7 +168,7 @@ pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
     );
     eprintln!(
         "[+] Done processing binary file `{}` in {:.1} seconds",
-        filepath.as_ref().display(),
+        filepath.display(),
         start.elapsed().as_secs_f64()
     );
     Ok(string_uses_count)
@@ -202,11 +199,9 @@ fn extract_string_uses(idb: &mut IDB, dirpath: &Path) -> anyhow::Result<usize> {
         println!("\n{addr:#X} {string:?}");
 
         // Traverse XREFs to string and dump the related pseudocode and type definitions to the output files.
-        if let Some(xref) = idb.first_xref_to(addr, XRefQuery::ALL) {
-            let string_dirpath = dirpath.join(string_dirname(addr, &string));
-            let count = traverse_xrefs(idb, xref, &string_dirpath, &mut dumped)?;
-            string_uses_count = string_uses_count.saturating_add(count);
-        }
+        let string_dirpath = dirpath.join(string_dirname(addr, &string));
+        let count = traverse_xrefs(idb, addr, &string_dirpath, &mut dumped)?;
+        string_uses_count = string_uses_count.saturating_add(count);
     }
 
     anyhow::ensure!(
@@ -246,8 +241,8 @@ fn recover_strings(idb: &mut IDB) -> Result<(), IDAError> {
     Ok(())
 }
 
-/// Iteratively traverses the XREFs to a string starting at `first_xref`, and dumps pseudocode and type
-/// definitions of each referencing function into `dirpath`.
+/// Iteratively traverses the XREFs to the string at `addr`, and dumps pseudocode and type definitions of each
+/// referencing function into `dirpath`.
 ///
 /// Functions that cannot be decompiled are skipped, without affecting the other XREFs. Returns the number of
 /// string uses in functions that were dumped.
@@ -258,14 +253,13 @@ fn recover_strings(idb: &mut IDB) -> Result<(), IDAError> {
 /// decompiler license is not available for the target binary.
 fn traverse_xrefs(
     idb: &IDB,
-    first_xref: XRef<'_>,
+    addr: Address,
     dirpath: &Path,
     dumped: &mut DumpCache,
 ) -> Result<usize, HaruspexError> {
     let mut string_uses_count: usize = 0;
-    let mut current = Some(first_xref);
 
-    while let Some(xref) = current {
+    for xref in iter::successors(idb.first_xref_to(addr, XRefQuery::ALL), XRef::next_to) {
         let from = xref.from();
 
         // If XREF is in a function, dump the function's pseudocode and type definitions,
@@ -280,7 +274,6 @@ fn traverse_xrefs(
         } else {
             println!("{from:#X} in [unknown]");
         }
-        current = xref.next_to();
     }
 
     Ok(string_uses_count)
@@ -315,12 +308,9 @@ fn dump_function_pseudocode(
     // Decompile the function on first use only. `None` means it failed to decompile, so it isn't retried.
     let cached = match dumped.entry(func.start_address()) {
         Entry::Occupied(entry) => entry.into_mut(),
-        Entry::Vacant(entry) => entry.insert(DumpedFunction::decompile_to(
-            idb,
-            func,
-            dirpath,
-            &output_path,
-        )?),
+        Entry::Vacant(entry) => {
+            entry.insert(DumpedFunction::decompile_to(idb, func, &output_path)?)
+        }
     };
 
     let Some(dumped_func) = cached.as_mut() else {
@@ -329,7 +319,7 @@ fn dump_function_pseudocode(
     };
 
     // Reuse the output files if the function was already dumped for another string.
-    dumped_func.copy_to(dirpath, &output_path)?;
+    dumped_func.copy_to(&output_path)?;
 
     if dumped_func.has_header {
         println!(
@@ -363,6 +353,15 @@ fn string_dirname(addr: Address, string: &str) -> String {
         "_{addr:X}_{}_",
         sanitize_filename(&filter_printable_chars(string))
     )
+}
+
+/// Creates the parent directory of `filepath` and all its missing ancestors, if `filepath` has a parent.
+///
+/// # Errors
+///
+/// Returns [`io::Error`] if the directory cannot be created.
+fn create_parent_dir(filepath: &Path) -> io::Result<()> {
+    filepath.parent().map_or(Ok(()), fs::create_dir_all)
 }
 
 /// Returns only the printable chars in `string`, i.e., ASCII graphic chars and spaces.
@@ -406,7 +405,7 @@ mod tests {
         let source = dir.join("func@1000.c");
         let mut dumped_func = dumped_function(source.clone(), true)?;
 
-        dumped_func.copy_to(&dir, &source)?;
+        dumped_func.copy_to(&source)?;
 
         assert_eq!(dumped_func.source, source, "source should be unchanged");
         assert_eq!(
@@ -425,7 +424,7 @@ mod tests {
         let mut dumped_func = dumped_function(dir.join("func@1000.c"), true)?;
         let output_path = dirpath.join("func@1000.c");
 
-        dumped_func.copy_to(&dirpath, &output_path)?;
+        dumped_func.copy_to(&output_path)?;
 
         assert_eq!(
             fs::read_to_string(&output_path)?,
@@ -452,7 +451,7 @@ mod tests {
         let mut dumped_func = dumped_function(dir.join("func@1000.c"), false)?;
         let output_path = dirpath.join("func@1000.c");
 
-        dumped_func.copy_to(&dirpath, &output_path)?;
+        dumped_func.copy_to(&output_path)?;
 
         assert!(output_path.is_file(), "source file should be copied");
         assert!(
@@ -469,7 +468,7 @@ mod tests {
         let mut dumped_func = dumped_function(dir.join("func@1000.c"), false)?;
         let output_path = dirpath.join("func@1000.c");
 
-        dumped_func.copy_to(&dirpath, &output_path)?;
+        dumped_func.copy_to(&output_path)?;
 
         assert!(dirpath.is_dir(), "output directory should be created");
         assert!(output_path.is_file(), "source file should be copied");
