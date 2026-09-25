@@ -6,7 +6,6 @@
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 use std::ffi::OsStr;
-use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 use std::{fs, io};
@@ -21,6 +20,11 @@ use idalib::func::{Function, FunctionFlags};
 use idalib::idb::IDB;
 use idalib::xref::{XRef, XRefQuery};
 use idalib::{Address, IDAError};
+
+/// Output files of each function decompiled so far, keyed by function start address.
+///
+/// `None` means that the function failed to decompile, so it isn't retried.
+type DumpCache = HashMap<Address, Option<DumpedFunction>>;
 
 /// Output files already written for a decompiled function, used to avoid decompiling it again.
 ///
@@ -55,9 +59,7 @@ impl DumpedFunction {
             Ok(cfunc) => cfunc,
 
             // The Hex-Rays decompiler license is not available.
-            Err(IDAError::HexRays(err)) if err.code() == HexRaysErrorCode::License => {
-                return Err(IDAError::HexRays(err).into());
-            }
+            Err(err) if is_license_error(&err) => return Err(err.into()),
 
             // The function can't be decompiled.
             Err(_) => return Ok(None),
@@ -72,10 +74,8 @@ impl DumpedFunction {
                 Ok(()) => true,
 
                 // The Hex-Rays decompiler license is not available.
-                Err(HaruspexError::DecompileFailed(IDAError::HexRays(err)))
-                    if err.code() == HexRaysErrorCode::License =>
-                {
-                    return Err(IDAError::HexRays(err).into());
+                Err(HaruspexError::DecompileFailed(err)) if is_license_error(&err) => {
+                    return Err(err.into());
                 }
 
                 // Type definitions are best-effort: no header if there are none or dumping them failed.
@@ -110,85 +110,6 @@ impl DumpedFunction {
             output_path.clone_into(&mut self.source);
         }
         Ok(())
-    }
-}
-
-/// IDA string type that holds strings extracted from IDA's string list.
-#[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
-struct IDAString(String);
-
-impl IDAString {
-    /// Iteratively traverses XREFs and dumps related pseudocode and type definitions to the output file.
-    ///
-    /// Functions that cannot be decompiled are skipped, without affecting the other XREFs.
-    ///
-    /// # Errors
-    ///
-    /// Returns the appropriate [`HaruspexError`] if the output file cannot be created, or if the Hex-Rays
-    /// decompiler license is not available for the target binary.
-    #[expect(
-        clippy::arithmetic_side_effects,
-        reason = "`usize` can hardly overflow here"
-    )]
-    fn traverse_xrefs(
-        &self,
-        idb: &IDB,
-        first_xref: XRef<'_>,
-        addr: Address,
-        dirpath: &Path,
-        string_uses_count: &mut usize,
-        dumped: &mut HashMap<Address, Option<DumpedFunction>>,
-    ) -> Result<(), HaruspexError> {
-        let string_name = self.filter_printable_chars();
-        let dirpath_sub = dirpath.join(format!("_{addr:X}_{}_", sanitize_filename(&string_name)));
-
-        let mut current = Some(first_xref);
-
-        while let Some(xref) = current {
-            let from = xref.from();
-
-            // If XREF is in a function, dump the function's pseudocode and type definitions,
-            // otherwise only print its address.
-            if let Some(func) = idb.function_at(from) {
-                // Skip the function if it has the `thunk` attribute, and only count it if it was dumped.
-                if !func.flags().contains(FunctionFlags::THUNK)
-                    && dump_function_pseudocode(idb, &func, from, &dirpath_sub, dumped)?
-                {
-                    *string_uses_count += 1;
-                }
-            } else {
-                println!("{from:#X} in [unknown]");
-            }
-            current = xref.next_to();
-        }
-
-        Ok(())
-    }
-
-    /// Takes an [`IDAString`] as input and returns a [`String`] that contains only its printable chars.
-    fn filter_printable_chars(&self) -> String {
-        self.chars()
-            .filter(|c| c.is_ascii_graphic() || *c == ' ')
-            .collect()
-    }
-}
-
-impl AsRef<str> for IDAString {
-    fn as_ref(&self) -> &str {
-        &self.0
-    }
-}
-
-impl Deref for IDAString {
-    type Target = str;
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl From<String> for IDAString {
-    fn from(value: String) -> Self {
-        Self(value)
     }
 }
 
@@ -231,56 +152,19 @@ pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
     let dirpath = filepath.as_ref().with_extension("str");
     prepare_output_dir(&dirpath)?;
 
-    // Leverage the full power of IDA to recover strings during decompilation.
-    eprintln!();
-    eprintln!("[*] Decompiling all functions and recovering strings...");
-    // Cleanup and return an error if the Hex-Rays decompiler license is not available.
-    if let Err(err) = recover_strings(&mut idb) {
-        fs::remove_dir_all(&dirpath)?;
-        return Err(err.into());
-    }
-
-    let mut string_uses_count = 0;
-    let mut dumped = HashMap::new();
-
-    eprintln!();
-    eprintln!("[*] Finding cross-references to strings...");
-    // Iterate over strings with their addresses, skipping any invalid entry in the string list.
-    #[expect(clippy::shadow_reuse, reason = "shadowing is convenient here")]
-    for (addr, string) in idb.strings().iter() {
-        let string = IDAString::from(string);
-        println!("\n{addr:#X} {:?}", string.as_ref());
-
-        // Traverse XREFs to string and dump the related pseudocode and type definitions to the output files.
-        idb.first_xref_to(addr, XRefQuery::ALL)
-            .map_or(Ok::<(), HaruspexError>(()), |xref| {
-                match string.traverse_xrefs(
-                    &idb,
-                    xref,
-                    addr,
-                    &dirpath,
-                    &mut string_uses_count,
-                    &mut dumped,
-                ) {
-                    // Cleanup and return an error if the Hex-Rays decompiler license is not available.
-                    Err(HaruspexError::DecompileFailed(IDAError::HexRays(err)))
-                        if err.code() == HexRaysErrorCode::License =>
-                    {
-                        fs::remove_dir_all(&dirpath)?;
-                        Err(IDAError::HexRays(err).into())
-                    }
-
-                    // Propagate any other error, or do nothing when XREF processing is finished.
-                    result => result,
-                }
-            })?;
-    }
-
-    if string_uses_count == 0 {
-        fs::remove_dir_all(&dirpath)
-            .with_context(|| format!("Failed to remove directory `{}`", dirpath.display()))?;
-        anyhow::bail!("No string uses were found, check your input file");
-    }
+    // Remove the output directory, which is empty or only partially populated, if anything goes wrong.
+    let string_uses_count = match extract_string_uses(&mut idb, &dirpath) {
+        Ok(count) => count,
+        Err(err) => {
+            if let Err(cleanup_err) = fs::remove_dir_all(&dirpath) {
+                eprintln!(
+                    "[!] Failed to remove directory `{}`: {cleanup_err}",
+                    dirpath.display()
+                );
+            }
+            return Err(err);
+        }
+    };
 
     eprintln!();
     eprintln!(
@@ -291,6 +175,48 @@ pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
         "[+] Done processing binary file `{}` in {:.1} seconds",
         filepath.as_ref().display(),
         start.elapsed().as_secs_f64()
+    );
+    Ok(string_uses_count)
+}
+
+/// Recovers strings, then dumps pseudocode and type definitions of each function that references them
+/// into `dirpath`, organized by string.
+///
+/// Returns the number of string uses in functions that were dumped.
+///
+/// # Errors
+///
+/// Returns [`anyhow::Error`] if the output files cannot be created, if the Hex-Rays decompiler license is not
+/// available for the target binary, or if no string uses were found.
+fn extract_string_uses(idb: &mut IDB, dirpath: &Path) -> anyhow::Result<usize> {
+    // Leverage the full power of IDA to recover strings during decompilation.
+    eprintln!();
+    eprintln!("[*] Decompiling all functions and recovering strings...");
+    recover_strings(idb)?;
+
+    let mut string_uses_count: usize = 0;
+    let mut dumped = DumpCache::new();
+
+    eprintln!();
+    eprintln!("[*] Finding cross-references to strings...");
+    // Iterate over strings with their addresses, skipping any invalid entry in the string list.
+    for (addr, string) in idb.strings().iter() {
+        println!("\n{addr:#X} {string:?}");
+
+        // Traverse XREFs to string and dump the related pseudocode and type definitions to the output files.
+        if let Some(xref) = idb.first_xref_to(addr, XRefQuery::ALL) {
+            let string_dirpath = dirpath.join(format!(
+                "_{addr:X}_{}_",
+                sanitize_filename(&filter_printable_chars(&string))
+            ));
+            let count = traverse_xrefs(idb, xref, &string_dirpath, &mut dumped)?;
+            string_uses_count = string_uses_count.saturating_add(count);
+        }
+    }
+
+    anyhow::ensure!(
+        string_uses_count > 0,
+        "No string uses were found, check your input file"
     );
     Ok(string_uses_count)
 }
@@ -309,10 +235,10 @@ fn recover_strings(idb: &mut IDB) -> Result<(), IDAError> {
         }
 
         // Bail out early if the Hex-Rays decompiler license is not available, ignore other IDA errors.
-        if let Err(IDAError::HexRays(err)) = idb.decompile(&func)
-            && err.code() == HexRaysErrorCode::License
+        if let Err(err) = idb.decompile(&func)
+            && is_license_error(&err)
         {
-            return Err(IDAError::HexRays(err));
+            return Err(err);
         }
     }
 
@@ -323,6 +249,46 @@ fn recover_strings(idb: &mut IDB) -> Result<(), IDAError> {
     idb.strings().rebuild();
 
     Ok(())
+}
+
+/// Iteratively traverses the XREFs to a string starting at `first_xref`, and dumps pseudocode and type
+/// definitions of each referencing function into `dirpath`.
+///
+/// Functions that cannot be decompiled are skipped, without affecting the other XREFs. Returns the number of
+/// string uses in functions that were dumped.
+///
+/// # Errors
+///
+/// Returns the appropriate [`HaruspexError`] if the output files cannot be created, or if the Hex-Rays
+/// decompiler license is not available for the target binary.
+fn traverse_xrefs(
+    idb: &IDB,
+    first_xref: XRef<'_>,
+    dirpath: &Path,
+    dumped: &mut DumpCache,
+) -> Result<usize, HaruspexError> {
+    let mut string_uses_count: usize = 0;
+    let mut current = Some(first_xref);
+
+    while let Some(xref) = current {
+        let from = xref.from();
+
+        // If XREF is in a function, dump the function's pseudocode and type definitions,
+        // otherwise only print its address.
+        if let Some(func) = idb.function_at(from) {
+            // Skip the function if it has the `thunk` attribute, and only count it if it was dumped.
+            if !func.flags().contains(FunctionFlags::THUNK)
+                && dump_function_pseudocode(idb, &func, from, dirpath, dumped)?
+            {
+                string_uses_count = string_uses_count.saturating_add(1);
+            }
+        } else {
+            println!("{from:#X} in [unknown]");
+        }
+        current = xref.next_to();
+    }
+
+    Ok(string_uses_count)
 }
 
 /// Dumps pseudocode of `func` into `dirpath` and prints XREF address, function name, and output path.
@@ -345,7 +311,7 @@ fn dump_function_pseudocode(
     func: &Function<'_>,
     from: Address,
     dirpath: &Path,
-    dumped: &mut HashMap<Address, Option<DumpedFunction>>,
+    dumped: &mut DumpCache,
 ) -> Result<bool, HaruspexError> {
     let func_name = func.name().unwrap_or_else(|| "[no name]".into());
     let output_path = output_path_for_function(func, dirpath);
@@ -386,15 +352,27 @@ fn dump_function_pseudocode(
     Ok(true)
 }
 
+/// Returns `true` if `err` means that the Hex-Rays decompiler license is not available for the target binary.
+fn is_license_error(err: &IDAError) -> bool {
+    matches!(err, IDAError::HexRays(hexrays_err) if hexrays_err.code() == HexRaysErrorCode::License)
+}
+
+/// Returns only the printable chars in `string`, i.e., ASCII graphic chars and spaces.
+fn filter_printable_chars(string: &str) -> String {
+    string
+        .chars()
+        .filter(|ch| ch.is_ascii_graphic() || *ch == ' ')
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn filter_printable_chars_keeps_ascii_graphic_chars() {
-        let s = IDAString::from("hello!@#$%^&*()".to_owned());
         assert_eq!(
-            s.filter_printable_chars(),
+            filter_printable_chars("hello!@#$%^&*()"),
             "hello!@#$%^&*()",
             "ascii graphic chars should be kept"
         );
@@ -402,9 +380,8 @@ mod tests {
 
     #[test]
     fn filter_printable_chars_keeps_space() {
-        let s = IDAString::from("hello world".to_owned());
         assert_eq!(
-            s.filter_printable_chars(),
+            filter_printable_chars("hello world"),
             "hello world",
             "space should be kept"
         );
@@ -412,9 +389,8 @@ mod tests {
 
     #[test]
     fn filter_printable_chars_strips_control_chars() {
-        let s = IDAString::from("hel\x00lo\x01\x1f".to_owned());
         assert_eq!(
-            s.filter_printable_chars(),
+            filter_printable_chars("hel\x00lo\x01\x1f"),
             "hello",
             "control chars should be stripped"
         );
@@ -422,9 +398,8 @@ mod tests {
 
     #[test]
     fn filter_printable_chars_strips_nul_bytes() {
-        let s = IDAString::from("foo\x00bar".to_owned());
         assert_eq!(
-            s.filter_printable_chars(),
+            filter_printable_chars("foo\x00bar"),
             "foobar",
             "nul bytes should be stripped"
         );
@@ -432,9 +407,8 @@ mod tests {
 
     #[test]
     fn filter_printable_chars_strips_non_ascii() {
-        let s = IDAString::from("caf\u{00e9}".to_owned());
         assert_eq!(
-            s.filter_printable_chars(),
+            filter_printable_chars("caf\u{00e9}"),
             "caf",
             "non-ascii chars should be stripped"
         );
@@ -442,9 +416,8 @@ mod tests {
 
     #[test]
     fn filter_printable_chars_on_empty_string_produces_empty_string() {
-        let s = IDAString::from(String::new());
         assert_eq!(
-            s.filter_printable_chars(),
+            filter_printable_chars(""),
             "",
             "empty input should produce empty output"
         );
@@ -452,9 +425,8 @@ mod tests {
 
     #[test]
     fn filter_printable_chars_on_all_non_printable_chars_produces_empty_string() {
-        let s = IDAString::from("\x00\x01\x02\x03".to_owned());
         assert_eq!(
-            s.filter_printable_chars(),
+            filter_printable_chars("\x00\x01\x02\x03"),
             "",
             "all non-printable chars should produce empty string"
         );

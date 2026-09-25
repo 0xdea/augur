@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Remove trailing whitespace from the string lines in tool output.
 - Keep processing the other uses of a string when one of the referencing functions fails to decompile.
 - Don't leave empty directories behind for strings whose referencing functions all fail to decompile.
+- Remove the partially populated output directory on any error, not only on Hex-Rays license errors.
 
 ## [0.10.2] - 2026-09-24
 
