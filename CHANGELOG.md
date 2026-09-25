@@ -10,11 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Add an integration test for binaries without string uses, checking that the output directory is removed on error.
+- Add integration tests for existing output directories, missing binaries, reused output files, and leftover IDB files.
 - Add unit tests for output directory naming, including a path traversal check, and for reusing output files.
 
 ### Changed
 
-- Decompile each function only once, reusing its output files for further string uses.
+- Decompile each function only once, reusing its output files for further string uses (big performance improvement).
 - Don't retry decompiling functions that already failed to decompile.
 - Report functions that fail to decompile in tool output.
 - Require haruspex v0.10.1 or later.
@@ -23,10 +24,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Skip invalid entries in the string list instead of aborting the whole run.
-- Remove trailing whitespace from the string lines in tool output.
 - Keep processing the other uses of a string when one of the referencing functions fails to decompile.
 - Don't leave empty directories behind for strings whose referencing functions all fail to decompile.
 - Remove the partially populated output directory on any error, not only on Hex-Rays license errors.
+- Remove trailing whitespace from the string lines in tool output.
 
 ## [0.10.2] - 2026-09-24
 

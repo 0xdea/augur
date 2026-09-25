@@ -103,7 +103,7 @@ All clippy lint groups (`all`, `pedantic`, `nursery`, `cargo`, `restriction`) ar
 
 The tests module has `#[expect(clippy::panic_in_result_fn)]`, since the file-system tests return `io::Result<()>`.
 
-**Integration tests** (`tests/main.rs`): custom harness (`harness = false`) whose `main()` calls one function per target binary, which runs augur and then calls one `check_*()` function per assertion; each check prints its own `[*] Checking ...` progress line. `reset_output()` removes any stale IDB file and output directory before each run, and the expected counts are module-level constants. `test_binary_with_string_uses()` runs against `tests/data/dox_sig_parser` and asserts:
+**Integration tests** (`tests/main.rs`): custom harness (`harness = false`) whose `main()` calls one `test_*()` function per scenario, which runs augur and then calls one `check_*()` function per assertion; each check prints its own `[*] Checking ...` progress line. `reset_output()` removes any stale IDB file and output directory before each run, and the expected counts are module-level constants. `test_binary_with_string_uses()` runs against `tests/data/dox_sig_parser` and asserts:
 
 - Exactly 18 decompiled string uses (only 5 without the `recover_strings()` pre-pass)
 - Exactly 10 output subdirectories
@@ -113,12 +113,24 @@ The tests module has `#[expect(clippy::panic_in_result_fn)]`, since the file-sys
 - `_4020C8_type ERROR_/sub_400C80@400C80.c` exists and is non-empty (spot-checks naming and decompilation output)
 - `_4020C8_type ERROR_/sub_401750@401750.h` does not exist (regression test for the `TypesEmpty` case: no header when there are no type defs)
 - `_4020C8_type ERROR_/sub_400C80@400C80.h` exists and is non-empty (regression test for the normal case: header written alongside the `.c` file)
+- `sub_400C80@400C80.c` and `.h`, which reference several strings, appear in exactly 8 string subdirectories with byte-identical content (end-to-end regression test for reusing output files instead of decompiling again)
+- No IDB file (`.i64`, or unpacked `.id0`/`.id1`/`.id2`/`.nam`/`.til`) is left next to the binary
 
 `test_binary_without_string_uses()` then runs against `tests/data/no_strings`, a minimal macOS arm64 Mach-O binary built from `tests/data/no_strings.c` (`cc -O0 -o no_strings no_strings.c`), and asserts:
 
 - `run()` returns the "No string uses were found" error
 - The output directory `no_strings.str/` does not exist afterwards (regression test for the single cleanup point in `run()`)
 
-Both binaries are analyzed sequentially in the same process, each with its own `IDB::open()`. Test harness progress messages are printed to stderr.
+`test_existing_output_dir()` creates a non-empty `no_strings.str/` before running against `tests/data/no_strings`, and asserts:
+
+- `run()` returns the "already exists" error from `prepare_output_dir()`
+- The existing file is still there and unchanged (regression test that the cleanup point never deletes pre-existing user data, which relies on `prepare_output_dir()` staying before `extract_string_uses()`)
+
+`test_missing_binary()` runs against the nonexistent `tests/data/missing`, and asserts:
+
+- `run()` returns the "Failed to analyze binary file" error
+- No output directory is created (`IDB::open()` fails before `prepare_output_dir()`)
+
+All scenarios run sequentially in the same process, each with its own `IDB::open()`. The harness stops at the first failed check. Test harness progress messages are printed to stderr.
 
 Uses the `walkdir` dev-dependency. Requires a live IDA installation.
