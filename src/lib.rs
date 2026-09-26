@@ -171,6 +171,7 @@ pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
         filepath.display(),
         start.elapsed().as_secs_f64()
     );
+
     Ok(string_uses_count)
 }
 
@@ -194,7 +195,6 @@ fn extract_string_uses(idb: &mut IDB, dirpath: &Path) -> anyhow::Result<usize> {
 
     eprintln!();
     eprintln!("[*] Finding cross-references to strings...");
-    // Iterate over strings with their addresses, skipping any invalid entry in the string list.
     for (addr, string) in idb.strings().iter() {
         println!("\n{addr:#X} {string:?}");
 
@@ -208,6 +208,7 @@ fn extract_string_uses(idb: &mut IDB, dirpath: &Path) -> anyhow::Result<usize> {
         string_uses_count > 0,
         "No string uses were found, check your input file"
     );
+
     Ok(string_uses_count)
 }
 
@@ -219,7 +220,6 @@ fn extract_string_uses(idb: &mut IDB, dirpath: &Path) -> anyhow::Result<usize> {
 /// Returns an [`IDAError`] if the Hex-Rays decompiler license is not available for the target binary.
 fn recover_strings(idb: &mut IDB) -> Result<(), IDAError> {
     for (_id, func) in idb.functions() {
-        // Skip the function if it has the `thunk` attribute.
         if func.flags().contains(FunctionFlags::THUNK) {
             continue;
         }
@@ -262,10 +262,9 @@ fn traverse_xrefs(
     for xref in iter::successors(idb.first_xref_to(addr, XRefQuery::ALL), XRef::next_to) {
         let from = xref.from();
 
-        // If XREF is in a function, dump the function's pseudocode and type definitions,
-        // otherwise only print its address.
+        // If XREF is in a function, dump the function's pseudocode and type definitions, otherwise only print its address.
         if let Some(func) = idb.function_at(from) {
-            // Skip the function if it has the `thunk` attribute, and only count it if it was dumped.
+            // Only count the string use if the function was dumped.
             if !func.flags().contains(FunctionFlags::THUNK)
                 && dump_function_pseudocode(idb, &func, from, dirpath, dumped)?
             {
@@ -305,7 +304,7 @@ fn dump_function_pseudocode(
     let func_name = func.name().unwrap_or_else(|| "[no name]".into());
     let output_path = output_path_for_function(func, dirpath);
 
-    // Decompile the function on first use only. `None` means it failed to decompile, so it isn't retried.
+    // Decompile the function on first use only.
     let cached = match dumped.entry(func.start_address()) {
         Entry::Occupied(entry) => entry.into_mut(),
         Entry::Vacant(entry) => {
@@ -313,6 +312,7 @@ fn dump_function_pseudocode(
         }
     };
 
+    // `None` means the function failed to decompile, so it isn't retried.
     let Some(dumped_func) = cached.as_mut() else {
         println!("{from:#X} in {func_name} -> [decompilation failed]");
         return Ok(false);
@@ -343,6 +343,15 @@ fn is_license_error(err: &IDAError) -> bool {
     matches!(err, IDAError::HexRays(hexrays_err) if hexrays_err.code() == HexRaysErrorCode::License)
 }
 
+/// Creates the parent directory of `filepath` and all its missing ancestors, if `filepath` has a parent.
+///
+/// # Errors
+///
+/// Returns [`io::Error`] if the directory cannot be created.
+fn create_parent_dir(filepath: &Path) -> io::Result<()> {
+    filepath.parent().map_or(Ok(()), fs::create_dir_all)
+}
+
 /// Returns the name of the output subdirectory for `string` at `addr`, i.e., `_{addr:X}_{sanitized_string}_`.
 ///
 /// Only the printable chars in `string` are kept, reserved chars (including path separators) are replaced, and
@@ -353,15 +362,6 @@ fn string_dirname(addr: Address, string: &str) -> String {
         "_{addr:X}_{}_",
         sanitize_filename(&filter_printable_chars(string))
     )
-}
-
-/// Creates the parent directory of `filepath` and all its missing ancestors, if `filepath` has a parent.
-///
-/// # Errors
-///
-/// Returns [`io::Error`] if the directory cannot be created.
-fn create_parent_dir(filepath: &Path) -> io::Result<()> {
-    filepath.parent().map_or(Ok(()), fs::create_dir_all)
 }
 
 /// Returns only the printable chars in `string`, i.e., ASCII graphic chars and spaces.
