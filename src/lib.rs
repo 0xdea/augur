@@ -122,10 +122,6 @@ impl DumpedFunction {
 /// Returns [`anyhow::Error`] if the binary file cannot be analyzed, if the decompiler or its license is not
 /// available, if the output directory already exists and is not empty, if the output files cannot be created,
 /// or if no string uses were found. On any error after the output directory is created, the directory is removed.
-#[expect(
-    clippy::shadow_reuse,
-    reason = "shadowing is convenient and idiomatic here"
-)]
 pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
     let start = Instant::now();
     let filepath = filepath.as_ref();
