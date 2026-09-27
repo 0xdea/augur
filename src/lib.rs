@@ -190,7 +190,7 @@ fn extract_string_uses(idb: &mut IDB, dirpath: &Path) -> anyhow::Result<usize> {
     eprintln!("[*] Decompiling all functions and recovering strings...");
     recover_strings(idb)?;
 
-    let mut string_uses_count: usize = 0;
+    let mut string_uses_count = 0_usize;
     let mut dumped = DumpCache::new();
 
     eprintln!();
