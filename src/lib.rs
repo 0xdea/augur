@@ -257,7 +257,7 @@ fn traverse_xrefs(
     dirpath: &Path,
     dumped: &mut DumpCache,
 ) -> Result<usize, HaruspexError> {
-    let mut string_uses_count: usize = 0;
+    let mut string_uses_count = 0_usize;
 
     for xref in iter::successors(idb.first_xref_to(addr, XRefQuery::ALL), XRef::next_to) {
         let from = xref.from();
