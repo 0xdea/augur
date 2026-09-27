@@ -33,6 +33,9 @@ const N_REUSED_COPIES: usize = 8;
 
 /// Custom harness for integration tests.
 fn main() -> anyhow::Result<()> {
+    // Force IDA to stay quiet.
+    idalib::force_batch_mode();
+
     test_binary_with_string_uses()?;
     test_binary_without_string_uses()?;
     test_existing_output_dir()?;
@@ -291,7 +294,7 @@ fn check_no_string_uses_error(result: anyhow::Result<usize>) -> anyhow::Result<(
         .err()
         .context("expected an error for a binary without string uses")?;
     assert!(
-        err.to_string().contains("No string uses were found"),
+        err.to_string().contains("no string uses were found"),
         "wrong error returned: {err:#}"
     );
     eprintln!("Ok.");
@@ -348,7 +351,7 @@ fn check_missing_binary_error(result: anyhow::Result<usize>) -> anyhow::Result<(
         .err()
         .context("expected an error for a missing binary")?;
     assert!(
-        err.to_string().contains("Failed to analyze binary file"),
+        err.to_string().contains("failed to analyze binary file"),
         "wrong error returned: {err:#}"
     );
     eprintln!("Ok.");

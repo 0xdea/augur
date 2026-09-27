@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Use lowercase error messages, consistently with the errors of the underlying libraries.
+- Force IDA batch mode in the integration test harness too.
 - Improve code organization and style.
 - Update documentation.
 

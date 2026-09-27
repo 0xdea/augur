@@ -128,7 +128,7 @@ pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
 
     eprintln!("[*] Analyzing binary file `{}`", filepath.display());
     let mut idb = IDB::open(filepath)
-        .with_context(|| format!("Failed to analyze binary file `{}`", filepath.display()))?;
+        .with_context(|| format!("failed to analyze binary file `{}`", filepath.display()))?;
     eprintln!("[+] Successfully analyzed binary file");
     eprintln!();
 
@@ -137,11 +137,11 @@ pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
     eprintln!("[-] File type: {:?}", idb.meta().filetype());
     eprintln!();
 
-    anyhow::ensure!(idb.decompiler_available(), "Decompiler is not available");
+    anyhow::ensure!(idb.decompiler_available(), "decompiler is not available");
 
     // Disable argument name hints.
     idb.modify_decompiler_config(ArgHintsMode::Disabled.directive())
-        .context("Failed to set decompiler's argument hints mode")?;
+        .context("failed to set decompiler's argument hints mode")?;
 
     // Create a new output directory, returning an error if it already exists and it's not empty.
     let dirpath = filepath.with_extension("str");
@@ -202,7 +202,7 @@ fn extract_string_uses(idb: &mut IDB, dirpath: &Path) -> anyhow::Result<usize> {
 
     anyhow::ensure!(
         string_uses_count > 0,
-        "No string uses were found, check your input file"
+        "no string uses were found, check your input file"
     );
 
     Ok(string_uses_count)
@@ -258,7 +258,8 @@ fn traverse_xrefs(
     for xref in iter::successors(idb.first_xref_to(addr, XRefQuery::ALL), XRef::next_to) {
         let from = xref.from();
 
-        // If XREF is in a function, dump the function's pseudocode and type definitions, otherwise only print its address.
+        // If XREF is in a function, dump the function's pseudocode and type definitions, otherwise
+        // only print its address.
         if let Some(func) = idb.function_at(from) {
             // Only count the string use if the function was dumped.
             if !func.flags().contains(FunctionFlags::THUNK)
@@ -335,6 +336,7 @@ fn dump_function_pseudocode(
 }
 
 /// Returns `true` if `err` means that the Hex-Rays decompiler license is not available for the target binary.
+#[must_use]
 fn is_license_error(err: &IDAError) -> bool {
     matches!(err, IDAError::HexRays(hexrays_err) if hexrays_err.code() == HexRaysErrorCode::License)
 }
@@ -350,9 +352,10 @@ fn create_parent_dir(filepath: &Path) -> io::Result<()> {
 
 /// Returns the name of the output subdirectory for `string` at `addr`, i.e., `_{addr:X}_{sanitized_string}_`.
 ///
-/// Only the printable chars in `string` are kept, reserved chars (including path separators) are replaced, and
-/// the result is truncated by haruspex's `sanitize_filename`, so that the name is always a single path component
-/// inside the output directory.
+/// Only the printable chars in `string` are kept, reserved chars (including path separators) are
+/// replaced, and the result is truncated by haruspex's [`sanitize_filename`], so that the name is
+/// always a single path component inside the output directory.
+#[must_use]
 fn string_dirname(addr: Address, string: &str) -> String {
     format!(
         "_{addr:X}_{}_",
@@ -361,6 +364,7 @@ fn string_dirname(addr: Address, string: &str) -> String {
 }
 
 /// Returns only the printable chars in `string`, i.e., ASCII graphic chars and spaces.
+#[must_use]
 fn filter_printable_chars(string: &str) -> String {
     string
         .chars()

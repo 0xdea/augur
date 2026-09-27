@@ -106,7 +106,7 @@ All clippy lint groups (`all`, `pedantic`, `nursery`, `cargo`, `restriction`) ar
 
 The tests module has `#[expect(clippy::panic_in_result_fn)]`, since the file-system tests return `io::Result<()>`.
 
-**Integration tests** (`tests/main.rs`): custom harness (`harness = false`) whose `main()` calls one `test_*()` function per scenario, which runs augur and then calls one `check_*()` function per assertion; each check prints its own `[*] Checking ...` progress line. `reset_output()` removes any stale IDB file and output directory before each run, and the expected counts are module-level constants. `test_binary_with_string_uses()` runs against `tests/data/dox_sig_parser` and asserts:
+**Integration tests** (`tests/main.rs`): custom harness (`harness = false`) whose `main()` first calls `idalib::force_batch_mode()`, like the binary, then calls one `test_*()` function per scenario, which runs augur and then calls one `check_*()` function per assertion; each check prints its own `[*] Checking ...` progress line. `reset_output()` removes any stale IDB file and output directory before each run, and the expected counts are module-level constants. `test_binary_with_string_uses()` runs against `tests/data/dox_sig_parser` and asserts:
 
 - Exactly 18 decompiled string uses (only 5 without the `recover_strings()` pre-pass)
 - Exactly 10 output subdirectories
@@ -121,7 +121,7 @@ The tests module has `#[expect(clippy::panic_in_result_fn)]`, since the file-sys
 
 `test_binary_without_string_uses()` then runs against `tests/data/no_strings`, a minimal macOS arm64 Mach-O binary built from `tests/data/no_strings.c` (`cc -O0 -o no_strings no_strings.c`), and asserts:
 
-- `run()` returns the "No string uses were found" error
+- `run()` returns the "no string uses were found" error
 - The output directory `no_strings.str/` does not exist afterwards (regression test for the single cleanup point in `run()`)
 
 `test_existing_output_dir()` creates a non-empty `no_strings.str/` before running against `tests/data/no_strings`, and asserts:
@@ -131,7 +131,7 @@ The tests module has `#[expect(clippy::panic_in_result_fn)]`, since the file-sys
 
 `test_missing_binary()` runs against the nonexistent `tests/data/missing`, and asserts:
 
-- `run()` returns the "Failed to analyze binary file" error
+- `run()` returns the "failed to analyze binary file" error
 - No output directory is created (`IDB::open()` fails before `prepare_output_dir()`)
 
 All scenarios run sequentially in the same process, each with its own `IDB::open()`. The harness stops at the first failed check. Test harness progress messages are printed to stderr.
