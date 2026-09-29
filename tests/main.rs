@@ -17,18 +17,21 @@ const MISSING: &str = "./tests/data/missing";
 
 /// Expected number of string uses in functions in `DOX_SIG_PARSER`.
 const N_USES: usize = 18;
-/// Expected number of subdirectories in the output directory of `DOX_SIG_PARSER`.
+/// Expected number of subdirectories in the output directory of
+/// `DOX_SIG_PARSER`.
 const N_SUBDIRS: usize = 10;
 /// Expected number of source files in the output directory of `DOX_SIG_PARSER`.
 const N_SOURCES: usize = 11;
 /// Expected number of header files in the output directory of `DOX_SIG_PARSER`.
 const N_HEADERS: usize = 8;
-/// Expected number of files in the output directory of `DOX_SIG_PARSER` and all subdirectories, including
-/// the root.
+/// Expected number of files in the output directory of `DOX_SIG_PARSER` and all
+/// subdirectories, including the root.
 const N_FILES: usize = N_SUBDIRS + N_SOURCES + N_HEADERS + 1;
-/// Name of the `.c` file of a function in `DOX_SIG_PARSER` that references several strings.
+/// Name of the `.c` file of a function in `DOX_SIG_PARSER` that references
+/// several strings.
 const REUSED_SOURCE: &str = "sub_400C80@400C80.c";
-/// Expected number of string subdirectories that contain the output files of `REUSED_SOURCE`.
+/// Expected number of string subdirectories that contain the output files of
+/// `REUSED_SOURCE`.
 const N_REUSED_COPIES: usize = 8;
 
 /// Custom harness for integration tests.
@@ -68,7 +71,8 @@ fn test_binary_with_string_uses() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Runs augur against a binary without string uses and checks that it fails cleanly.
+/// Runs augur against a binary without string uses and checks that it fails
+/// cleanly.
 fn test_binary_without_string_uses() -> anyhow::Result<()> {
     let dirpath = reset_output(NO_STRINGS)?;
 
@@ -80,7 +84,8 @@ fn test_binary_without_string_uses() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Runs augur with an existing, non-empty output directory and checks that its contents are preserved.
+/// Runs augur with an existing, non-empty output directory and checks that its
+/// contents are preserved.
 fn test_existing_output_dir() -> anyhow::Result<()> {
     let dirpath = reset_output(NO_STRINGS)?;
     let existing_file = dirpath.join("existing.txt");
@@ -98,7 +103,8 @@ fn test_existing_output_dir() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Runs augur against a binary that doesn't exist and checks that it fails without creating any output.
+/// Runs augur against a binary that doesn't exist and checks that it fails
+/// without creating any output.
 fn test_missing_binary() -> anyhow::Result<()> {
     let dirpath = reset_output(MISSING)?;
 
@@ -109,7 +115,8 @@ fn test_missing_binary() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Removes the IDB file and the output directory of the binary at `filename`, if they exist.
+/// Removes the IDB file and the output directory of the binary at `filename`,
+/// if they exist.
 ///
 /// Returns the path of the output directory.
 fn reset_output(filename: &str) -> anyhow::Result<PathBuf> {
@@ -146,7 +153,8 @@ fn check_number_of_subdirectories(dirpath: &Path) -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Checks the number of created files in the output directory and all subdirectories.
+/// Checks the number of created files in the output directory and all
+/// subdirectories.
 fn check_number_of_files(dirpath: &Path) {
     eprint!("[*] Checking number of files in output directory and all subdirectories... ");
     assert_eq!(
@@ -157,7 +165,8 @@ fn check_number_of_files(dirpath: &Path) {
     eprintln!("Ok.");
 }
 
-/// Checks that string uses recovered only by decompiling all functions upfront are present.
+/// Checks that string uses recovered only by decompiling all functions upfront
+/// are present.
 fn check_recovered_string_uses(dirpath: &Path) -> anyhow::Result<()> {
     eprint!("[*] Checking string uses recovered via the decompiler are present... ");
     let recovered_dir = dirpath.join("_4020A8_Parsing type error at line %d__");
@@ -184,7 +193,8 @@ fn check_arg_hints_disabled(dirpath: &Path) -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Spot-checks a known output file: verifies the naming scheme and that decompilation produced output.
+/// Spot-checks a known output file: verifies the naming scheme and that
+/// decompilation produced output.
 fn check_known_output_file(dirpath: &Path) -> anyhow::Result<()> {
     eprint!("[*] Checking known output file exists and is non-empty... ");
     let known_file = dirpath
@@ -204,7 +214,8 @@ fn check_known_output_file(dirpath: &Path) -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Checks that a function with no type definitions to dump produces no header file.
+/// Checks that a function with no type definitions to dump produces no header
+/// file.
 fn check_missing_header_file(dirpath: &Path) {
     eprint!("[*] Checking function with no type definitions has no header file... ");
     let missing_header = dirpath
@@ -218,7 +229,8 @@ fn check_missing_header_file(dirpath: &Path) {
     eprintln!("Ok.");
 }
 
-/// Checks that a function with type definitions produces a matching, non-empty header file.
+/// Checks that a function with type definitions produces a matching, non-empty
+/// header file.
 fn check_known_header_file(dirpath: &Path) -> anyhow::Result<()> {
     eprint!("[*] Checking known header file exists and is non-empty... ");
     let known_header = dirpath
@@ -238,8 +250,9 @@ fn check_known_header_file(dirpath: &Path) -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Checks that the output files of a function that references several strings are identical in every string
-/// subdirectory, i.e., that the files reused instead of decompiling the function again match the original ones.
+/// Checks that the output files of a function that references several strings
+/// are identical in every string subdirectory, i.e., that the files reused
+/// instead of decompiling the function again match the original ones.
 fn check_reused_output_files(dirpath: &Path) -> anyhow::Result<()> {
     eprint!("[*] Checking reused output files are identical in every subdirectory... ");
     let entries = WalkDir::new(dirpath)
@@ -273,7 +286,8 @@ fn check_reused_output_files(dirpath: &Path) -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Checks that no IDB file, packed or unpacked, is left next to the binary at `filename`.
+/// Checks that no IDB file, packed or unpacked, is left next to the binary at
+/// `filename`.
 fn check_no_idb_file(filename: &str) {
     eprint!("[*] Checking no IDB file is left next to the binary... ");
     for extension in ["i64", "id0", "id1", "id2", "nam", "til"] {
@@ -287,7 +301,8 @@ fn check_no_idb_file(filename: &str) {
     eprintln!("Ok.");
 }
 
-/// Checks that `run` returns the expected error for a binary without string uses.
+/// Checks that `run` returns the expected error for a binary without string
+/// uses.
 fn check_no_string_uses_error(result: anyhow::Result<usize>) -> anyhow::Result<()> {
     eprint!("[*] Checking binary without string uses returns an error... ");
     let err = result
@@ -312,7 +327,8 @@ fn check_output_dir_removed(dirpath: &Path) {
     eprintln!("Ok.");
 }
 
-/// Checks that `run` returns the expected error when the output directory already exists and is not empty.
+/// Checks that `run` returns the expected error when the output directory
+/// already exists and is not empty.
 fn check_existing_output_dir_error(result: anyhow::Result<usize>) -> anyhow::Result<()> {
     eprint!("[*] Checking existing output directory returns an error... ");
     let err = result
@@ -326,7 +342,8 @@ fn check_existing_output_dir_error(result: anyhow::Result<usize>) -> anyhow::Res
     Ok(())
 }
 
-/// Checks that the contents of an existing output directory are preserved on error.
+/// Checks that the contents of an existing output directory are preserved on
+/// error.
 fn check_existing_output_dir_preserved(existing_file: &Path) -> anyhow::Result<()> {
     eprint!("[*] Checking existing output directory is preserved on error... ");
     assert!(
@@ -344,7 +361,8 @@ fn check_existing_output_dir_preserved(existing_file: &Path) -> anyhow::Result<(
     Ok(())
 }
 
-/// Checks that `run` returns the expected error for a binary that doesn't exist.
+/// Checks that `run` returns the expected error for a binary that doesn't
+/// exist.
 fn check_missing_binary_error(result: anyhow::Result<usize>) -> anyhow::Result<()> {
     eprint!("[*] Checking missing binary returns an error... ");
     let err = result

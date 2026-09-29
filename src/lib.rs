@@ -21,15 +21,17 @@ use idalib::idb::IDB;
 use idalib::xref::{XRef, XRefQuery};
 use idalib::{Address, IDAError};
 
-/// Output files of each function decompiled so far, keyed by function start address.
+/// Output files of each function decompiled so far, keyed by function start
+/// address.
 ///
 /// `None` means that the function failed to decompile, so it isn't retried.
 type DumpCache = HashMap<Address, Option<DumpedFunction>>;
 
-/// Output files already written for a decompiled function, used to avoid decompiling it again.
+/// Output files already written for a decompiled function, used to avoid
+/// decompiling it again.
 ///
-/// Created by [`DumpedFunction::decompile_to`] on first use, and reused via [`DumpedFunction::copy_to`]
-/// for any further string use.
+/// Created by [`DumpedFunction::decompile_to`] on first use, and reused via
+/// [`DumpedFunction::copy_to`] for any further string use.
 #[derive(Debug)]
 struct DumpedFunction {
     /// Path of the most recently written `.c` pseudocode file.
@@ -39,16 +41,18 @@ struct DumpedFunction {
 }
 
 impl DumpedFunction {
-    /// Decompiles `func` and writes its output files at `output_path`, creating the parent directory of
-    /// `output_path` only once there is something to write in it.
+    /// Decompiles `func` and writes its output files at `output_path`, creating the
+    /// parent directory of `output_path` only once there is something to write in
+    /// it.
     ///
-    /// Type definitions are best-effort: the `.h` file is only written if there are any, and a failure to
-    /// dump them is ignored. Returns `None` if `func` cannot be decompiled.
+    /// Type definitions are best-effort: the `.h` file is only written if there are
+    /// any, and a failure to dump them is ignored. Returns `None` if `func` cannot
+    /// be decompiled.
     ///
     /// # Errors
     ///
-    /// Returns [`HaruspexError`] if the output files cannot be created, or if the Hex-Rays decompiler license
-    /// is not available for the target binary.
+    /// Returns [`HaruspexError`] if the output files cannot be created, or if the
+    /// Hex-Rays decompiler license is not available for the target binary.
     fn decompile_to(
         idb: &IDB,
         func: &Function<'_>,
@@ -77,7 +81,8 @@ impl DumpedFunction {
                     return Err(err.into());
                 }
 
-                // Type definitions are best-effort: no header if there are none or dumping them failed.
+                // Type definitions are best-effort: no header if there are none or dumping them
+                // failed.
                 Err(HaruspexError::TypesEmpty | HaruspexError::DecompileFailed(_)) => false,
 
                 // Propagate any other error.
@@ -90,12 +95,14 @@ impl DumpedFunction {
         }))
     }
 
-    /// Makes the output files available at `output_path`, copying them from their previous location unless
-    /// they are already in place, then tracks the copy so the files aren't copied again.
+    /// Makes the output files available at `output_path`, copying them from their
+    /// previous location unless they are already in place, then tracks the copy so
+    /// the files aren't copied again.
     ///
     /// # Errors
     ///
-    /// Returns [`io::Error`] if the output directory cannot be created or the output files cannot be copied.
+    /// Returns [`io::Error`] if the output directory cannot be created or the
+    /// output files cannot be copied.
     fn copy_to(&mut self, output_path: &Path) -> io::Result<()> {
         if self.source != output_path {
             create_parent_dir(output_path)?;
@@ -112,16 +119,19 @@ impl DumpedFunction {
     }
 }
 
-/// Extracts strings and pseudocode/type definitions of each function that references them from the
-/// binary at `filepath` and saves them in `filepath.str`.
+/// Extracts strings and pseudocode/type definitions of each function that
+/// references them from the binary at `filepath` and saves them in
+/// `filepath.str`.
 ///
 /// Returns the number of string uses in functions whose pseudocode was dumped.
 ///
 /// # Errors
 ///
-/// Returns [`anyhow::Error`] if the binary file cannot be analyzed, if the decompiler or its license is not
-/// available, if the output directory already exists and is not empty, if the output files cannot be created,
-/// or if no string uses were found. On any error after the output directory is created, the directory is removed.
+/// Returns [`anyhow::Error`] if the binary file cannot be analyzed, if the
+/// decompiler or its license is not available, if the output directory already
+/// exists and is not empty, if the output files cannot be created, or if no
+/// string uses were found. On any error after the output directory is created,
+/// the directory is removed.
 pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
     let start = Instant::now();
     let filepath = filepath.as_ref();
@@ -143,11 +153,13 @@ pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
     idb.modify_decompiler_config(ArgHintsMode::Disabled.directive())
         .context("failed to set decompiler's argument hints mode")?;
 
-    // Create a new output directory, returning an error if it already exists and it's not empty.
+    // Create a new output directory, returning an error if it already exists and
+    // it's not empty.
     let dirpath = filepath.with_extension("str");
     prepare_output_dir(&dirpath)?;
 
-    // Remove the output directory, which is empty or only partially populated, if anything goes wrong.
+    // Remove the output directory, which is empty or only partially populated, if
+    // anything goes wrong.
     let string_uses_count = extract_string_uses(&mut idb, &dirpath).inspect_err(|_| {
         if let Err(cleanup_err) = fs::remove_dir_all(&dirpath) {
             eprintln!(
@@ -171,15 +183,16 @@ pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
     Ok(string_uses_count)
 }
 
-/// Recovers strings, then dumps pseudocode and type definitions of each function that references them
-/// into `dirpath`, organized by string.
+/// Recovers strings, then dumps pseudocode and type definitions of each
+/// function that references them into `dirpath`, organized by string.
 ///
 /// Returns the number of string uses in functions that were dumped.
 ///
 /// # Errors
 ///
-/// Returns [`anyhow::Error`] if the output files cannot be created, if the Hex-Rays decompiler license is not
-/// available for the target binary, or if no string uses were found.
+/// Returns [`anyhow::Error`] if the output files cannot be created, if the
+/// Hex-Rays decompiler license is not available for the target binary, or if no
+/// string uses were found.
 fn extract_string_uses(idb: &mut IDB, dirpath: &Path) -> anyhow::Result<usize> {
     // Leverage the full power of IDA to recover strings during decompilation.
     eprintln!();
@@ -194,7 +207,8 @@ fn extract_string_uses(idb: &mut IDB, dirpath: &Path) -> anyhow::Result<usize> {
     for (addr, string) in idb.strings().iter() {
         println!("\n{addr:#X} {string:?}");
 
-        // Traverse XREFs to string and dump the related pseudocode and type definitions to the output files.
+        // Traverse XREFs to string and dump the related pseudocode and type definitions
+        // to the output files.
         let string_dirpath = dirpath.join(string_dirname(addr, &string));
         let count = traverse_xrefs(idb, addr, &string_dirpath, &mut dumped)?;
         string_uses_count = string_uses_count.saturating_add(count);
@@ -208,19 +222,21 @@ fn extract_string_uses(idb: &mut IDB, dirpath: &Path) -> anyhow::Result<usize> {
     Ok(string_uses_count)
 }
 
-/// Decompiles all functions in the IDB to let IDA recover additional strings, ignoring decompilation
-/// errors, then rebuilds the string list.
+/// Decompiles all functions in the IDB to let IDA recover additional strings,
+/// ignoring decompilation errors, then rebuilds the string list.
 ///
 /// # Errors
 ///
-/// Returns an [`IDAError`] if the Hex-Rays decompiler license is not available for the target binary.
+/// Returns an [`IDAError`] if the Hex-Rays decompiler license is not available
+/// for the target binary.
 fn recover_strings(idb: &mut IDB) -> Result<(), IDAError> {
     for (_id, func) in idb.functions() {
         if func.flags().contains(FunctionFlags::THUNK) {
             continue;
         }
 
-        // Bail out early if the Hex-Rays decompiler license is not available, ignore other IDA errors.
+        // Bail out early if the Hex-Rays decompiler license is not available, ignore
+        // other IDA errors.
         if let Err(err) = idb.decompile(&func)
             && is_license_error(&err)
         {
@@ -228,7 +244,8 @@ fn recover_strings(idb: &mut IDB) -> Result<(), IDAError> {
         }
     }
 
-    // The decompiler queues new string items for auto-analysis, so wait for it before rebuilding.
+    // The decompiler queues new string items for auto-analysis, so wait for it
+    // before rebuilding.
     if !idb.auto_wait() {
         eprintln!("[!] Auto-analysis failed");
     }
@@ -237,16 +254,17 @@ fn recover_strings(idb: &mut IDB) -> Result<(), IDAError> {
     Ok(())
 }
 
-/// Iteratively traverses the XREFs to the string at `addr`, and dumps pseudocode and type definitions of each
-/// referencing function into `dirpath`.
+/// Iteratively traverses the XREFs to the string at `addr`, and dumps
+/// pseudocode and type definitions of each referencing function into `dirpath`.
 ///
-/// Functions that cannot be decompiled are skipped, without affecting the other XREFs. Returns the number of
-/// string uses in functions that were dumped.
+/// Functions that cannot be decompiled are skipped, without affecting the other
+/// XREFs. Returns the number of string uses in functions that were dumped.
 ///
 /// # Errors
 ///
-/// Returns the appropriate [`HaruspexError`] if the output files cannot be created, or if the Hex-Rays
-/// decompiler license is not available for the target binary.
+/// Returns the appropriate [`HaruspexError`] if the output files cannot be
+/// created, or if the Hex-Rays decompiler license is not available for the
+/// target binary.
 fn traverse_xrefs(
     idb: &IDB,
     addr: Address,
@@ -258,8 +276,8 @@ fn traverse_xrefs(
     for xref in iter::successors(idb.first_xref_to(addr, XRefQuery::ALL), XRef::next_to) {
         let from = xref.from();
 
-        // If XREF is in a function, dump the function's pseudocode and type definitions, otherwise
-        // only print its address.
+        // If XREF is in a function, dump the function's pseudocode and type
+        // definitions, otherwise only print its address.
         if let Some(func) = idb.function_at(from) {
             // Only count the string use if the function was dumped.
             if !func.flags().contains(FunctionFlags::THUNK)
@@ -275,22 +293,25 @@ fn traverse_xrefs(
     Ok(string_uses_count)
 }
 
-/// Dumps pseudocode of `func` into `dirpath` and prints XREF address, function name, and output path (or a
-/// failure notice if `func` cannot be decompiled).
+/// Dumps pseudocode of `func` into `dirpath` and prints XREF address, function
+/// name, and output path (or a failure notice if `func` cannot be decompiled).
 ///
-/// Alongside the `.c` pseudocode file, a sibling `.h` file with `func`'s type definitions is written
-/// when any are available; if there are none, only the `.c` file is produced.
+/// Alongside the `.c` pseudocode file, a sibling `.h` file with `func`'s type
+/// definitions is written when any are available; if there are none, only the
+/// `.c` file is produced.
 ///
-/// Each function is decompiled only once: `dumped` tracks the output files already written for each
-/// function, which are reused (as is if already in `dirpath`, copied otherwise) for any further string use,
-/// as well as the functions that failed to decompile, which are not retried.
+/// Each function is decompiled only once: `dumped` tracks the output files
+/// already written for each function, which are reused (as is if already in
+/// `dirpath`, copied otherwise) for any further string use, as well as the
+/// functions that failed to decompile, which are not retried.
 ///
-/// Returns `true` if the pseudocode was dumped, or `false` if `func` could not be decompiled.
+/// Returns `true` if the pseudocode was dumped, or `false` if `func` could not
+/// be decompiled.
 ///
 /// # Errors
 ///
-/// Returns [`HaruspexError`] if the output files cannot be created, or if the Hex-Rays decompiler license
-/// is not available for the target binary.
+/// Returns [`HaruspexError`] if the output files cannot be created, or if the
+/// Hex-Rays decompiler license is not available for the target binary.
 fn dump_function_pseudocode(
     idb: &IDB,
     func: &Function<'_>,
@@ -335,13 +356,15 @@ fn dump_function_pseudocode(
     Ok(true)
 }
 
-/// Returns `true` if `err` means that the Hex-Rays decompiler license is not available for the target binary.
+/// Returns `true` if `err` means that the Hex-Rays decompiler license is not
+/// available for the target binary.
 #[must_use]
 fn is_license_error(err: &IDAError) -> bool {
     matches!(err, IDAError::HexRays(hexrays_err) if hexrays_err.code() == HexRaysErrorCode::License)
 }
 
-/// Creates the parent directory of `filepath` and all its missing ancestors, if `filepath` has a parent.
+/// Creates the parent directory of `filepath` and all its missing ancestors, if
+/// `filepath` has a parent.
 ///
 /// # Errors
 ///
@@ -350,11 +373,13 @@ fn create_parent_dir(filepath: &Path) -> io::Result<()> {
     filepath.parent().map_or(Ok(()), fs::create_dir_all)
 }
 
-/// Returns the name of the output subdirectory for `string` at `addr`, i.e., `_{addr:X}_{sanitized_string}_`.
+/// Returns the name of the output subdirectory for `string` at `addr`, i.e.,
+/// `_{addr:X}_{sanitized_string}_`.
 ///
-/// Only the printable chars in `string` are kept, reserved chars (including path separators) are
-/// replaced, and the result is truncated by haruspex's [`sanitize_filename`], so that the name is
-/// always a single path component inside the output directory.
+/// Only the printable chars in `string` are kept, reserved chars (including
+/// path separators) are replaced, and the result is truncated by haruspex's
+/// [`sanitize_filename`], so that the name is always a single path component
+/// inside the output directory.
 #[must_use]
 fn string_dirname(addr: Address, string: &str) -> String {
     format!(
@@ -363,7 +388,8 @@ fn string_dirname(addr: Address, string: &str) -> String {
     )
 }
 
-/// Returns only the printable chars in `string`, i.e., ASCII graphic chars and spaces.
+/// Returns only the printable chars in `string`, i.e., ASCII graphic chars and
+/// spaces.
 #[must_use]
 fn filter_printable_chars(string: &str) -> String {
     string
@@ -380,7 +406,8 @@ mod tests {
 
     use super::*;
 
-    /// Returns a fresh, empty temporary directory scoped to `label` and the current process.
+    /// Returns a fresh, empty temporary directory scoped to `label` and the current
+    /// process.
     fn test_dir(label: &str) -> io::Result<PathBuf> {
         let dir = env::temp_dir().join(format!("augur_{label}_{}", process::id()));
         if dir.exists() {
@@ -390,7 +417,8 @@ mod tests {
         Ok(dir)
     }
 
-    /// Writes a `.c` file (and optionally a `.h` file) at `source` and returns the matching [`DumpedFunction`].
+    /// Writes a `.c` file (and optionally a `.h` file) at `source` and returns the
+    /// matching [`DumpedFunction`].
     fn dumped_function(source: PathBuf, has_header: bool) -> io::Result<DumpedFunction> {
         fs::write(&source, "pseudocode")?;
         if has_header {
@@ -438,7 +466,7 @@ mod tests {
         );
         assert_eq!(
             dumped_func.source, output_path,
-            "source should point at the copy, so that further uses of the same string don't copy it again"
+            "source should point at the copy, to avoid copying it again"
         );
         fs::remove_dir_all(&dir)
     }
