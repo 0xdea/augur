@@ -106,7 +106,7 @@ All clippy lint groups (`all`, `pedantic`, `nursery`, `cargo`, `restriction`) ar
 
 The tests module has `#[expect(clippy::panic_in_result_fn)]`, since the file-system tests return `io::Result<()>`.
 
-**Integration tests** (`tests/main.rs`): custom harness (`harness = false`) whose `main()` first calls `idalib::force_batch_mode()`, like the binary, then calls one `test_*()` function per scenario, which runs augur and then calls one `check_*()` function per assertion; each check prints its own `[*] Checking ...` progress line. `reset_output()` removes any stale IDB file and output directory before each run, and the expected counts are module-level constants. `test_binary_with_string_uses()` runs against `tests/data/dox_sig_parser` and asserts:
+**Integration tests** (`tests/main.rs`): custom harness (`harness = false`) whose `main()` first calls `idalib::force_batch_mode()`, like the binary, then calls one `test_*()` function per scenario, which runs augur and then calls one `check_*()` function per assertion; each check prints its own `[*] Checking ...` progress line. `reset_output()` removes any stale IDB files (every extension in `IDB_EXTENSIONS`, shared with `check_no_idb_file()`) and output directory before each run, and the expected counts are module-level constants. Expected errors are matched against the full error chain (`format!("{err:#}")`), i.e., what users see. These conventions match rhabdomancer's harness. `test_binary_with_string_uses()` runs against `tests/data/dox_sig_parser` and asserts:
 
 - Exactly 18 decompiled string uses (only 5 without the `recover_strings()` pre-pass)
 - Exactly 10 output subdirectories
@@ -123,11 +123,13 @@ The tests module has `#[expect(clippy::panic_in_result_fn)]`, since the file-sys
 
 - `run()` returns the "no string uses were found" error
 - The output directory `no_strings.str/` does not exist afterwards (regression test for the single cleanup point in `run()`)
+- No IDB file is left next to the binary
 
 `test_existing_output_dir()` creates a non-empty `no_strings.str/` before running against `tests/data/no_strings`, and asserts:
 
 - `run()` returns the "already exists" error from `prepare_output_dir()`
 - The existing file is still there and unchanged (regression test that the cleanup point never deletes pre-existing user data, which relies on `prepare_output_dir()` staying before `extract_string_uses()`)
+- No IDB file is left next to the binary
 
 `test_missing_binary()` runs against the nonexistent `tests/data/missing`, and asserts:
 

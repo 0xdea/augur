@@ -8,6 +8,9 @@ use std::path::{Path, PathBuf};
 use anyhow::Context as _;
 use walkdir::WalkDir;
 
+/// Extensions of the files that make up an IDB, packed (`i64`) or unpacked.
+const IDB_EXTENSIONS: [&str; 6] = ["i64", "id0", "id1", "id2", "nam", "til"];
+
 /// Target binary with string uses.
 const DOX_SIG_PARSER: &str = "./tests/data/dox_sig_parser";
 /// Target binary without string uses.
@@ -80,6 +83,7 @@ fn test_binary_without_string_uses() -> anyhow::Result<()> {
     eprintln!();
     check_no_string_uses_error(result)?;
     check_output_dir_removed(&dirpath);
+    check_no_idb_file(NO_STRINGS);
     eprintln!();
     Ok(())
 }
@@ -96,6 +100,7 @@ fn test_existing_output_dir() -> anyhow::Result<()> {
     eprintln!();
     check_existing_output_dir_error(result)?;
     check_existing_output_dir_preserved(&existing_file)?;
+    check_no_idb_file(NO_STRINGS);
 
     // Remove the output directory at the end.
     fs::remove_dir_all(&dirpath)?;
@@ -115,16 +120,18 @@ fn test_missing_binary() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Removes the IDB file and the output directory of the binary at `filename`,
-/// if they exist.
+/// Removes the IDB files, packed or unpacked, and the output directory of the
+/// binary at `filename`, if they exist.
 ///
 /// Returns the path of the output directory.
 fn reset_output(filename: &str) -> anyhow::Result<PathBuf> {
     let filepath = Path::new(filename);
 
-    let idb_path = filepath.with_extension("i64");
-    if idb_path.is_file() {
-        fs::remove_file(idb_path)?;
+    for extension in IDB_EXTENSIONS {
+        let idb_path = filepath.with_extension(extension);
+        if idb_path.is_file() {
+            fs::remove_file(idb_path)?;
+        }
     }
 
     let dirpath = filepath.with_extension("str");
@@ -290,7 +297,7 @@ fn check_reused_output_files(dirpath: &Path) -> anyhow::Result<()> {
 /// `filename`.
 fn check_no_idb_file(filename: &str) {
     eprint!("[*] Checking no IDB file is left next to the binary... ");
-    for extension in ["i64", "id0", "id1", "id2", "nam", "til"] {
+    for extension in IDB_EXTENSIONS {
         let idb_path = Path::new(filename).with_extension(extension);
         assert!(
             !idb_path.exists(),
@@ -309,7 +316,7 @@ fn check_no_string_uses_error(result: anyhow::Result<usize>) -> anyhow::Result<(
         .err()
         .context("expected an error for a binary without string uses")?;
     assert!(
-        err.to_string().contains("no string uses were found"),
+        format!("{err:#}").contains("no string uses were found"),
         "wrong error returned: {err:#}"
     );
     eprintln!("Ok.");
@@ -335,7 +342,7 @@ fn check_existing_output_dir_error(result: anyhow::Result<usize>) -> anyhow::Res
         .err()
         .context("expected an error for an existing output directory")?;
     assert!(
-        err.to_string().contains("already exists"),
+        format!("{err:#}").contains("already exists"),
         "wrong error returned: {err:#}"
     );
     eprintln!("Ok.");
@@ -369,7 +376,7 @@ fn check_missing_binary_error(result: anyhow::Result<usize>) -> anyhow::Result<(
         .err()
         .context("expected an error for a missing binary")?;
     assert!(
-        err.to_string().contains("failed to analyze binary file"),
+        format!("{err:#}").contains("failed to analyze binary file"),
         "wrong error returned: {err:#}"
     );
     eprintln!("Ok.");
