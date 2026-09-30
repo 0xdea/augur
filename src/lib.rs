@@ -279,15 +279,24 @@ pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
     prepare_output_dir(&dirpath)?;
 
     // Remove the output directory, which is empty or only partially populated, if
-    // anything goes wrong.
-    let string_uses_count = extract_string_uses(&mut idb, &dirpath).inspect_err(|_| {
-        if let Err(cleanup_err) = fs::remove_dir_all(&dirpath) {
-            eprintln!(
-                "[!] Failed to remove directory `{}`: {cleanup_err}",
-                dirpath.display()
+    // anything goes wrong, including when no string uses were found.
+    let string_uses_count = extract_string_uses(&mut idb, &dirpath)
+        .map_err(anyhow::Error::from)
+        .and_then(|count| {
+            anyhow::ensure!(
+                count > 0,
+                "no string uses were found, check your input file"
             );
-        }
-    })?;
+            Ok(count)
+        })
+        .inspect_err(|_| {
+            if let Err(cleanup_err) = fs::remove_dir_all(&dirpath) {
+                eprintln!(
+                    "[!] Failed to remove directory `{}`: {cleanup_err}",
+                    dirpath.display()
+                );
+            }
+        })?;
 
     eprintln!();
     eprintln!(
@@ -306,14 +315,14 @@ pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
 /// Recovers strings, then dumps pseudocode and type definitions of each
 /// function that references them into `dirpath`, organized by string.
 ///
-/// Returns the number of string uses in functions that were dumped.
+/// Returns the number of string uses in functions that were dumped, which may
+/// be zero.
 ///
 /// # Errors
 ///
-/// Returns [`anyhow::Error`] if the output files cannot be created, if the
-/// Hex-Rays decompiler license is not available for the target binary, or if no
-/// string uses were found.
-fn extract_string_uses(idb: &mut IDB, dirpath: &Path) -> anyhow::Result<usize> {
+/// Returns [`HaruspexError`] if the output files cannot be created, or if the
+/// Hex-Rays decompiler license is not available for the target binary.
+fn extract_string_uses(idb: &mut IDB, dirpath: &Path) -> Result<usize, HaruspexError> {
     // Leverage the full power of IDA to recover strings during decompilation.
     eprintln!();
     eprintln!("[*] Decompiling all functions and recovering strings...");
@@ -333,11 +342,6 @@ fn extract_string_uses(idb: &mut IDB, dirpath: &Path) -> anyhow::Result<usize> {
         let count = dumper.traverse_xrefs(addr, &string_dirpath)?;
         string_uses_count = string_uses_count.saturating_add(count);
     }
-
-    anyhow::ensure!(
-        string_uses_count > 0,
-        "no string uses were found, check your input file"
-    );
 
     Ok(string_uses_count)
 }
