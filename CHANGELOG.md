@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Use lowercase error messages, consistently with the errors of the underlying libraries.
 - Force IDA batch mode in the integration test harness too.
-- Check for leftover IDB files in every integration test scenario that analyzes a binary, and remove all of them before each run.
+- Check for leftover IDB files in every integration test scenario that analyzes a binary, and remove all of them before and after each run.
 - Match expected errors against the full error chain in integration tests, like rhabdomancer.
 - Improve code organization and style.
 - Update documentation.

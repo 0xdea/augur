@@ -68,8 +68,8 @@ fn test_binary_with_string_uses() -> anyhow::Result<()> {
     check_reused_output_files(&dirpath)?;
     check_no_idb_file(DOX_SIG_PARSER);
 
-    // Remove the output directory at the end.
-    fs::remove_dir_all(&dirpath)?;
+    // Remove the output directory and any IDB files at the end.
+    reset_output(DOX_SIG_PARSER)?;
     eprintln!();
     Ok(())
 }
@@ -102,8 +102,8 @@ fn test_existing_output_dir() -> anyhow::Result<()> {
     check_existing_output_dir_preserved(&existing_file)?;
     check_no_idb_file(NO_STRINGS);
 
-    // Remove the output directory at the end.
-    fs::remove_dir_all(&dirpath)?;
+    // Remove the output directory and any IDB files at the end.
+    reset_output(NO_STRINGS)?;
     eprintln!();
     Ok(())
 }
