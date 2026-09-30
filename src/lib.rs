@@ -119,6 +119,126 @@ impl DumpedFunction {
     }
 }
 
+/// Dumps pseudocode and type definitions of the functions that reference
+/// strings, decompiling each function at most once per run.
+struct FunctionDumper<'a> {
+    /// IDB that contains the functions to dump.
+    idb: &'a IDB,
+    /// Output files of each function dumped so far.
+    dumped: DumpCache,
+}
+
+impl<'a> FunctionDumper<'a> {
+    /// Returns a dumper for the functions in `idb`, with no functions dumped yet.
+    fn new(idb: &'a IDB) -> Self {
+        Self {
+            idb,
+            dumped: DumpCache::new(),
+        }
+    }
+
+    /// Iteratively traverses the XREFs to the string at `addr`, and dumps
+    /// pseudocode and type definitions of each referencing function into
+    /// `dirpath`.
+    ///
+    /// Functions that cannot be decompiled are skipped, without affecting the
+    /// other XREFs. Returns the number of string uses in functions that were
+    /// dumped.
+    ///
+    /// # Errors
+    ///
+    /// Returns the appropriate [`HaruspexError`] if the output files cannot be
+    /// created, or if the Hex-Rays decompiler license is not available for the
+    /// target binary.
+    fn traverse_xrefs(&mut self, addr: Address, dirpath: &Path) -> Result<usize, HaruspexError> {
+        let idb = self.idb;
+        let mut string_uses_count = 0_usize;
+
+        for xref in iter::successors(idb.first_xref_to(addr, XRefQuery::ALL), XRef::next_to) {
+            let from = xref.from();
+
+            // If XREF is in a function, dump the function's pseudocode and type
+            // definitions, otherwise only print its address.
+            if let Some(func) = idb.function_at(from) {
+                // Only count the string use if the function was dumped.
+                if !func.flags().contains(FunctionFlags::THUNK)
+                    && self.dump_function_pseudocode(&func, from, dirpath)?
+                {
+                    string_uses_count = string_uses_count.saturating_add(1);
+                }
+            } else {
+                println!("{from:#X} in [unknown]");
+            }
+        }
+
+        Ok(string_uses_count)
+    }
+
+    /// Dumps pseudocode of `func` into `dirpath` and prints XREF address,
+    /// function name, and output path (or a failure notice if `func` cannot be
+    /// decompiled).
+    ///
+    /// Alongside the `.c` pseudocode file, a sibling `.h` file with `func`'s type
+    /// definitions is written when any are available; if there are none, only
+    /// the `.c` file is produced.
+    ///
+    /// Each function is decompiled only once: the dumper tracks the output files
+    /// already written for each function, which are reused (as is if already in
+    /// `dirpath`, copied otherwise) for any further string use, as well as the
+    /// functions that failed to decompile, which are not retried.
+    ///
+    /// Returns `true` if the pseudocode was dumped, or `false` if `func` could
+    /// not be decompiled.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`HaruspexError`] if the output files cannot be created, or if the
+    /// Hex-Rays decompiler license is not available for the target binary.
+    fn dump_function_pseudocode(
+        &mut self,
+        func: &Function<'_>,
+        from: Address,
+        dirpath: &Path,
+    ) -> Result<bool, HaruspexError> {
+        let func_name = func.name().unwrap_or_else(|| "[no name]".into());
+        let output_path = output_path_for_function(func, dirpath);
+
+        // Decompile the function on first use only.
+        let cached = match self.dumped.entry(func.start_address()) {
+            Entry::Occupied(entry) => entry.into_mut(),
+            Entry::Vacant(entry) => {
+                entry.insert(DumpedFunction::decompile_to(self.idb, func, &output_path)?)
+            }
+        };
+
+        // `None` means the function failed to decompile, so it isn't retried.
+        let Some(dumped_func) = cached.as_mut() else {
+            println!("{from:#X} in {func_name} -> [decompilation failed]");
+            return Ok(false);
+        };
+
+        // Reuse the output files if the function was already dumped for another
+        // string.
+        dumped_func.copy_to(&output_path)?;
+
+        if dumped_func.has_header {
+            println!(
+                "{from:#X} in {func_name} -> `{}` + `{}`",
+                output_path.display(),
+                output_path
+                    .with_extension("h")
+                    .file_name()
+                    .map(OsStr::to_string_lossy)
+                    .unwrap_or_default()
+            );
+        } else {
+            println!("{from:#X} in {func_name} -> `{}`", output_path.display());
+        }
+
+        Ok(true)
+    }
+}
+
 /// Extracts strings and pseudocode/type definitions of each function that
 /// references them from the binary at `filepath` and saves them in
 /// `filepath.str`.
@@ -200,7 +320,7 @@ fn extract_string_uses(idb: &mut IDB, dirpath: &Path) -> anyhow::Result<usize> {
     recover_strings(idb)?;
 
     let mut string_uses_count = 0_usize;
-    let mut dumped = DumpCache::new();
+    let mut dumper = FunctionDumper::new(idb);
 
     eprintln!();
     eprintln!("[*] Finding cross-references to strings...");
@@ -210,7 +330,7 @@ fn extract_string_uses(idb: &mut IDB, dirpath: &Path) -> anyhow::Result<usize> {
         // Traverse XREFs to string and dump the related pseudocode and type definitions
         // to the output files.
         let string_dirpath = dirpath.join(string_dirname(addr, &string));
-        let count = traverse_xrefs(idb, addr, &string_dirpath, &mut dumped)?;
+        let count = dumper.traverse_xrefs(addr, &string_dirpath)?;
         string_uses_count = string_uses_count.saturating_add(count);
     }
 
@@ -252,108 +372,6 @@ fn recover_strings(idb: &mut IDB) -> Result<(), IDAError> {
     idb.strings().rebuild();
 
     Ok(())
-}
-
-/// Iteratively traverses the XREFs to the string at `addr`, and dumps
-/// pseudocode and type definitions of each referencing function into `dirpath`.
-///
-/// Functions that cannot be decompiled are skipped, without affecting the other
-/// XREFs. Returns the number of string uses in functions that were dumped.
-///
-/// # Errors
-///
-/// Returns the appropriate [`HaruspexError`] if the output files cannot be
-/// created, or if the Hex-Rays decompiler license is not available for the
-/// target binary.
-fn traverse_xrefs(
-    idb: &IDB,
-    addr: Address,
-    dirpath: &Path,
-    dumped: &mut DumpCache,
-) -> Result<usize, HaruspexError> {
-    let mut string_uses_count = 0_usize;
-
-    for xref in iter::successors(idb.first_xref_to(addr, XRefQuery::ALL), XRef::next_to) {
-        let from = xref.from();
-
-        // If XREF is in a function, dump the function's pseudocode and type
-        // definitions, otherwise only print its address.
-        if let Some(func) = idb.function_at(from) {
-            // Only count the string use if the function was dumped.
-            if !func.flags().contains(FunctionFlags::THUNK)
-                && dump_function_pseudocode(idb, &func, from, dirpath, dumped)?
-            {
-                string_uses_count = string_uses_count.saturating_add(1);
-            }
-        } else {
-            println!("{from:#X} in [unknown]");
-        }
-    }
-
-    Ok(string_uses_count)
-}
-
-/// Dumps pseudocode of `func` into `dirpath` and prints XREF address, function
-/// name, and output path (or a failure notice if `func` cannot be decompiled).
-///
-/// Alongside the `.c` pseudocode file, a sibling `.h` file with `func`'s type
-/// definitions is written when any are available; if there are none, only the
-/// `.c` file is produced.
-///
-/// Each function is decompiled only once: `dumped` tracks the output files
-/// already written for each function, which are reused (as is if already in
-/// `dirpath`, copied otherwise) for any further string use, as well as the
-/// functions that failed to decompile, which are not retried.
-///
-/// Returns `true` if the pseudocode was dumped, or `false` if `func` could not
-/// be decompiled.
-///
-/// # Errors
-///
-/// Returns [`HaruspexError`] if the output files cannot be created, or if the
-/// Hex-Rays decompiler license is not available for the target binary.
-fn dump_function_pseudocode(
-    idb: &IDB,
-    func: &Function<'_>,
-    from: Address,
-    dirpath: &Path,
-    dumped: &mut DumpCache,
-) -> Result<bool, HaruspexError> {
-    let func_name = func.name().unwrap_or_else(|| "[no name]".into());
-    let output_path = output_path_for_function(func, dirpath);
-
-    // Decompile the function on first use only.
-    let cached = match dumped.entry(func.start_address()) {
-        Entry::Occupied(entry) => entry.into_mut(),
-        Entry::Vacant(entry) => {
-            entry.insert(DumpedFunction::decompile_to(idb, func, &output_path)?)
-        }
-    };
-
-    // `None` means the function failed to decompile, so it isn't retried.
-    let Some(dumped_func) = cached.as_mut() else {
-        println!("{from:#X} in {func_name} -> [decompilation failed]");
-        return Ok(false);
-    };
-
-    // Reuse the output files if the function was already dumped for another string.
-    dumped_func.copy_to(&output_path)?;
-
-    if dumped_func.has_header {
-        println!(
-            "{from:#X} in {func_name} -> `{}` + `{}`",
-            output_path.display(),
-            output_path
-                .with_extension("h")
-                .file_name()
-                .map(OsStr::to_string_lossy)
-                .unwrap_or_default()
-        );
-    } else {
-        println!("{from:#X} in {func_name} -> `{}`", output_path.display());
-    }
-
-    Ok(true)
 }
 
 /// Returns `true` if `err` means that the Hex-Rays decompiler license is not

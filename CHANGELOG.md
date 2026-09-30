@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Force IDA batch mode in the integration test harness too.
 - Check for leftover IDB files in every integration test scenario that analyzes a binary, and remove all of them before and after each run.
 - Match expected errors against the full error chain in integration tests, like rhabdomancer.
+- Refactor `traverse_xrefs` and `dump_function_pseudocode` into methods of a `FunctionDumper` context struct.
 - Improve code organization and style.
 - Update documentation.
 
