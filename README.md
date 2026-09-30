@@ -13,14 +13,14 @@
 >
 > -- A.
 
-Augur is a blazing fast IDA headless plugin that extracts strings and related pseudocode from a binary file.
+Augur is a blazing-fast IDA headless plugin that extracts strings and related pseudocode from a binary file.
 It stores pseudocode of functions that reference strings in an organized directory tree.
 
 ![](https://raw.githubusercontent.com/0xdea/augur/master/.img/screen01.png)
 
 ## Features
 
-- Blazing fast, headless user experience courtesy of IDA 9.x and idalib-rs Rust bindings.
+- Blazing-fast, headless user experience courtesy of IDA 9.x and idalib-rs Rust bindings.
 - Support for binary targets for any architecture implemented by IDA's Hex-Rays decompiler.
 - Decompilation feature based on the API exported by [haruspex](https://github.com/0xdea/haruspex).
 - All functions are decompiled upfront, to allow IDA to [recover additional strings](https://docs.hex-rays.com/release-notes/9_4#decompiler-strings).
