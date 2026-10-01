@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add an integration test for invalid command-line arguments, like rhabdomancer.
+
 ### Changed
 
 - Use lowercase error messages, consistently with the errors of the underlying libraries.

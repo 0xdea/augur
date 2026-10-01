@@ -2,8 +2,8 @@
 
 #![expect(clippy::panic_in_result_fn, reason = "panics are allowed in test code")]
 
-use std::fs;
 use std::path::{Path, PathBuf};
+use std::{fs, process};
 
 use anyhow::Context as _;
 use walkdir::WalkDir;
@@ -46,6 +46,7 @@ fn main() -> anyhow::Result<()> {
     test_binary_without_string_uses()?;
     test_existing_output_dir()?;
     test_missing_binary()?;
+    test_invalid_arguments()?;
 
     eprintln!();
     Ok(())
@@ -120,6 +121,21 @@ fn test_missing_binary() -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Runs the augur binary with invalid arguments and checks that it prints
+/// usage information without analyzing any binary.
+fn test_invalid_arguments() -> anyhow::Result<()> {
+    let dirpath = reset_output(NO_STRINGS)?;
+
+    for args in [&[][..], &[NO_STRINGS, NO_STRINGS], &["-h"], &["--help"]] {
+        eprintln!();
+        let output = run_binary(args)?;
+        check_usage(&output, args);
+    }
+    check_no_idb_file(NO_STRINGS);
+    check_no_output_dir_created(&dirpath);
+    Ok(())
+}
+
 /// Removes the IDB files, packed or unpacked, and the output directory of the
 /// binary at `filename`, if they exist.
 ///
@@ -139,6 +155,20 @@ fn reset_output(filename: &str) -> anyhow::Result<PathBuf> {
         fs::remove_dir_all(&dirpath)?;
     }
     Ok(dirpath)
+}
+
+/// Runs the augur binary with `args`, forwards its stderr, and returns its
+/// output.
+///
+/// # Errors
+///
+/// Returns an error if the binary cannot be run.
+fn run_binary(args: &[&str]) -> anyhow::Result<process::Output> {
+    let output = process::Command::new(env!("CARGO_BIN_EXE_augur"))
+        .args(args)
+        .output()?;
+    eprint!("{}", String::from_utf8_lossy(&output.stderr));
+    Ok(output)
 }
 
 /// Checks the number of string uses in functions.
@@ -390,6 +420,25 @@ fn check_no_output_dir_created(dirpath: &Path) {
         !dirpath.exists(),
         "unexpected output directory created: {}",
         dirpath.display()
+    );
+    eprintln!("Ok.");
+}
+
+/// Checks that the augur binary run with the invalid arguments `args` printed
+/// usage information to stderr, nothing to stdout, and failed.
+fn check_usage(output: &process::Output, args: &[&str]) {
+    eprint!("[*] Checking usage is printed for arguments {args:?}... ");
+    assert!(
+        !output.status.success(),
+        "invalid arguments {args:?} should fail"
+    );
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("Usage:"),
+        "usage information should be printed for arguments {args:?}"
+    );
+    assert!(
+        output.stdout.is_empty(),
+        "nothing should be printed to stdout for arguments {args:?}"
     );
     eprintln!("Ok.");
 }

@@ -136,6 +136,13 @@ The tests module has `#[expect(clippy::panic_in_result_fn)]`, since the file-sys
 - `run()` returns the "failed to analyze binary file" error
 - No output directory is created (`IDB::open()` fails before `prepare_output_dir()`)
 
+`test_invalid_arguments()` runs the real binary (via `run_binary()`, with `env!("CARGO_BIN_EXE_augur")`) with no arguments, two arguments (`tests/data/no_strings` twice), `-h`, and `--help`, and asserts:
+
+- Each run fails, prints `Usage:` to stderr, and prints nothing to stdout (checked by `check_usage()`)
+- No IDB file and no output directory are created for `tests/data/no_strings`
+
+It covers the only branching in `src/main.rs`; IDA never opens a database here, so it's fast.
+
 All scenarios run sequentially in the same process, each with its own `IDB::open()`. The harness stops at the first failed check. Test harness progress messages are printed to stderr.
 
 Uses the `walkdir` dev-dependency. Requires a live IDA installation.
