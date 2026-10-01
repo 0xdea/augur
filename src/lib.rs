@@ -32,7 +32,7 @@ type DumpCache = HashMap<Address, Option<DumpedFunction>>;
 ///
 /// Created by [`DumpedFunction::decompile_to`] on first use, and reused via
 /// [`DumpedFunction::copy_to`] for any further string use.
-#[derive(Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 struct DumpedFunction {
     /// Path of the most recently written `.c` pseudocode file.
     source: PathBuf,
@@ -130,10 +130,11 @@ struct FunctionDumper<'a> {
 
 impl<'a> FunctionDumper<'a> {
     /// Returns a dumper for the functions in `idb`, with no functions dumped yet.
+    #[must_use]
     fn new(idb: &'a IDB) -> Self {
         Self {
             idb,
-            dumped: DumpCache::new(),
+            dumped: DumpCache::default(),
         }
     }
 
