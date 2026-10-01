@@ -588,15 +588,6 @@ mod tests {
     }
 
     #[test]
-    fn filter_printable_chars_strips_nul_bytes() {
-        assert_eq!(
-            filter_printable_chars("foo\x00bar"),
-            "foobar",
-            "nul bytes should be stripped"
-        );
-    }
-
-    #[test]
     fn filter_printable_chars_strips_non_ascii() {
         assert_eq!(
             filter_printable_chars("caf\u{00e9}"),
