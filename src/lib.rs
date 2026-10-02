@@ -107,12 +107,14 @@ impl DumpedFunction {
         if self.source != output_path {
             create_parent_dir(output_path)?;
             fs::copy(&self.source, output_path)?;
+
             if self.has_header {
                 fs::copy(
                     self.source.with_extension("h"),
                     output_path.with_extension("h"),
                 )?;
             }
+
             output_path.clone_into(&mut self.source);
         }
         Ok(())
