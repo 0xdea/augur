@@ -140,6 +140,32 @@ impl<'a> FunctionDumper<'a> {
         }
     }
 
+    /// Dumps pseudocode and type definitions of each function that references
+    /// the strings in the IDB into `dirpath`, organized by string.
+    ///
+    /// Returns the number of string uses in functions that were dumped, which
+    /// may be zero.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`HaruspexError`] if the output files cannot be created, or if the
+    /// Hex-Rays decompiler license is not available for the target binary.
+    fn dump_all(&mut self, dirpath: &Path) -> Result<usize, HaruspexError> {
+        let mut string_uses_count = 0_usize;
+
+        for (addr, string) in self.idb.strings().iter() {
+            println!("\n{addr:#X} {string:?}");
+
+            // Traverse XREFs to string and dump the related pseudocode and type
+            // definitions to the output files.
+            let string_dirpath = dirpath.join(string_dirname(addr, &string));
+            let count = self.traverse_xrefs(addr, &string_dirpath)?;
+            string_uses_count = string_uses_count.saturating_add(count);
+        }
+
+        Ok(string_uses_count)
+    }
+
     /// Iteratively traverses the XREFs to the string at `addr`, and dumps
     /// pseudocode and type definitions of each referencing function into
     /// `dirpath`.
@@ -331,22 +357,9 @@ fn extract_string_uses(idb: &mut IDB, dirpath: &Path) -> Result<usize, HaruspexE
     eprintln!("[*] Decompiling all functions and recovering strings...");
     recover_strings(idb)?;
 
-    let mut string_uses_count = 0_usize;
-    let mut dumper = FunctionDumper::new(idb);
-
     eprintln!();
     eprintln!("[*] Finding cross-references to strings...");
-    for (addr, string) in idb.strings().iter() {
-        println!("\n{addr:#X} {string:?}");
-
-        // Traverse XREFs to string and dump the related pseudocode and type definitions
-        // to the output files.
-        let string_dirpath = dirpath.join(string_dirname(addr, &string));
-        let count = dumper.traverse_xrefs(addr, &string_dirpath)?;
-        string_uses_count = string_uses_count.saturating_add(count);
-    }
-
-    Ok(string_uses_count)
+    FunctionDumper::new(idb).dump_all(dirpath)
 }
 
 /// Decompiles all functions in the IDB to let IDA recover additional strings,
