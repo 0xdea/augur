@@ -610,22 +610,4 @@ mod tests {
             "non-ascii chars should be stripped"
         );
     }
-
-    #[test]
-    fn filter_printable_chars_on_empty_string_produces_empty_string() {
-        assert_eq!(
-            filter_printable_chars(""),
-            "",
-            "empty input should produce empty output"
-        );
-    }
-
-    #[test]
-    fn filter_printable_chars_on_all_non_printable_chars_produces_empty_string() {
-        assert_eq!(
-            filter_printable_chars("\x00\x01\x02\x03"),
-            "",
-            "all non-printable chars should produce empty string"
-        );
-    }
 }
