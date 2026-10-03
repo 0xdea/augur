@@ -1,4 +1,4 @@
-//! main.rs.
+//! Command-line entry point for `augur`.
 
 use std::env;
 use std::ffi::OsStr;
