@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add an integration test for invalid command-line arguments, like rhabdomancer.
 - Add the `too_big` test binary, with a function too big to decompile, and an integration test for skipped string uses.
+- Add the `no_decompiler` test binary and an integration test for binaries without a decompiler.
 - Pin the CLI output in integration tests by running the binary, and check `run`'s return value with an empty output
   directory, like haruspex.
 

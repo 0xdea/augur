@@ -164,6 +164,12 @@ The tests for reusing a function's output files (`DumpedFunction::copy_to`) move
 - The output directory `no_strings.str/` does not exist afterwards (regression test for the single cleanup point in `run()`)
 - No IDB file is left next to the binary
 
+`test_binary_without_decompiler()` then runs against `tests/data/no_decompiler`, the same fixture as haruspex's: a data-only ELF object for MSP430, a processor without a Hex-Rays decompiler, built as an i386 object from `tests/data/no_decompiler.c` with its ELF `e_machine` patched (the commands are in the source), and asserts:
+
+- `run()` returns the "decompiler is not available" error from `haruspex::ArgHintsMode::apply()`
+- No output directory is created, since the decompiler is checked before preparing it
+- No IDB file is left next to the binary
+
 `test_existing_output_dir()` creates a non-empty `dox_sig_parser.str/` before running against `tests/data/dox_sig_parser`, then empties it and runs again (the same shape as haruspex's scenario), and asserts:
 
 - `run()` returns the "already exists" error from `prepare_output_dir()`

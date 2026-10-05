@@ -15,6 +15,8 @@ const IDB_EXTENSIONS: [&str; 6] = ["i64", "id0", "id1", "id2", "nam", "til"];
 const DOX_SIG_PARSER: &str = "./tests/data/dox_sig_parser";
 /// Target binary without string uses.
 const NO_STRINGS: &str = "./tests/data/no_strings";
+/// Target binary for a processor without a decompiler.
+const NO_DECOMPILER: &str = "./tests/data/no_decompiler";
 /// Target binary with a string used only in a function too big to decompile.
 const TOO_BIG: &str = "./tests/data/too_big";
 /// Target binary that doesn't exist.
@@ -53,6 +55,7 @@ fn main() -> anyhow::Result<()> {
     test_binary_with_string_uses()?;
     test_binary_with_skipped_uses()?;
     test_binary_without_string_uses()?;
+    test_binary_without_decompiler()?;
     test_existing_output_dir()?;
     test_missing_binary()?;
     test_invalid_arguments()?;
@@ -127,6 +130,20 @@ fn test_binary_without_string_uses() -> anyhow::Result<()> {
     check_no_string_uses_error(result)?;
     check_output_dir_removed(&dirpath);
     check_no_idb_file(NO_STRINGS);
+    eprintln!();
+    Ok(())
+}
+
+/// Runs augur against a binary for a processor without a decompiler, and
+/// checks that it fails before creating any output.
+fn test_binary_without_decompiler() -> anyhow::Result<()> {
+    let dirpath = reset_output(NO_DECOMPILER)?;
+
+    let result = augur::run(NO_DECOMPILER);
+    eprintln!();
+    check_no_decompiler_error(result)?;
+    check_no_output_dir_created(&dirpath);
+    check_no_idb_file(NO_DECOMPILER);
     eprintln!();
     Ok(())
 }
@@ -481,6 +498,21 @@ fn check_no_string_uses_error(result: anyhow::Result<usize>) -> anyhow::Result<(
         .context("expected an error for a binary without string uses")?;
     assert!(
         format!("{err:#}").contains("no string uses were found"),
+        "wrong error returned: {err:#}"
+    );
+    eprintln!("Ok.");
+    Ok(())
+}
+
+/// Checks that `run` returns the expected error for a binary without a
+/// decompiler.
+fn check_no_decompiler_error(result: anyhow::Result<usize>) -> anyhow::Result<()> {
+    eprint!("[*] Checking binary without a decompiler returns an error... ");
+    let err = result
+        .err()
+        .context("expected an error for a binary without a decompiler")?;
+    assert!(
+        format!("{err:#}").contains("decompiler is not available"),
         "wrong error returned: {err:#}"
     );
     eprintln!("Ok.");
