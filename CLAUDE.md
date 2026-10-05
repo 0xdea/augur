@@ -8,7 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Build requirements
 
-- IDA 9.4+ (see the README's compatibility table) with the Hex-Rays decompiler and a valid license, with `IDADIR` set to the installation directory at both build time and runtime. The build script (`build.rs`, via `idalib-build`) checks common installation paths if it's unset, and only warns if it can't find IDA; for non-standard locations it must be set explicitly.
+- IDA 9.4+ (see the README's compatibility table) with the Hex-Rays decompiler and a valid license, with `IDADIR` set to the installation directory at both build time and runtime. The build script (`build.rs`, via `idalib-build`) checks common installation paths if it's unset, and only warns if it can't find IDA, so set it explicitly for non-standard locations (`export IDADIR=/path/to/ida`).
 - LLVM/Clang, used by bindgen when building `idalib`. On Windows, `LIBCLANG_PATH` must also be set to the LLVM/Clang `bin` directory.
 - Rust edition 2024.
 
@@ -77,7 +77,7 @@ This is a **single-crate project** — no workspace, just `src/main.rs` (CLI ent
 
 ## Output
 
-Informational/progress messages go to stderr; only the per-string and per-function result lines (address, name, output path) go to stdout.
+Results go to stdout (`println!`); everything else (banner, progress, summary, timing, errors) goes to stderr (`eprintln!`), with the prefixes `[*]` for progress, `[+]` for success and summaries, `[-]` for information, and `[!]` for warnings and errors, and the elapsed time as `{:.1} seconds`. Preserve this split when adding new output. The results are the per-string header lines and the per-use result lines (address, name, output path).
 
 Output layout:
 
@@ -97,10 +97,29 @@ Output layout:
 - XREFs outside any function are printed as `{from:#X} in [unknown]` on stdout and not counted as string uses.
 - Functions that fail to decompile are reported on stdout, skipped (not counted as string uses), and not retried.
 - If no string uses are found, the output directory is deleted and an error is returned.
+- `main()` prints errors as `[!] Error: {err:#}` (the full context chain) and exits with `ExitCode::FAILURE`.
 
 ## Lint policy
 
-All clippy lint groups (`all`, `pedantic`, `nursery`, `cargo`, `restriction`) are enabled as warnings in `Cargo.toml` and treated as errors by `cargo clippy -- -D warnings`. A small set of restriction lints are explicitly allowed (e.g. `implicit_return`, `question_mark_used`, `print_stdout`, `pattern_type_mismatch`). Use `anyhow`/`?` for error propagation and `Option` combinators instead of `unwrap`/`expect`. When a restriction lint must be suppressed, use `#[expect(..., reason = "...")]` rather than `#[allow(...)]`.
+All clippy lint groups (`all`, `pedantic`, `nursery`, `cargo`, `restriction`) are enabled as warnings in the workspace lints of `Cargo.toml` (the same configuration in augur, haruspex, and rhabdomancer) and treated as errors by `cargo clippy -- -D warnings`. A curated set of restriction lints is explicitly allowed (e.g., `implicit_return`, `question_mark_used`, `print_stdout`, `pattern_type_mismatch`), and `linker_messages = "allow"` is a temporary workaround for <https://github.com/idalib-rs/idalib/issues/81>. Notably forbidden outside tests:
+
+- `unwrap`, `expect`, `panic`, `todo`, `unimplemented`, `unreachable`, `dbg_macro`: use `?`, `anyhow` context, and `Option` combinators instead.
+- Unsafe blocks without a `// Safety:` comment (`undocumented_unsafe_blocks`).
+- Undocumented items (`missing_docs`, `missing_docs_in_private_items`): every item has a doc comment, private ones and test helpers included.
+
+`clippy::min_ident_chars` is enabled, so single-character identifiers (e.g. `|s|`, `for f in`) are flagged — use descriptive names like `name`, `func`, `idx`. Clippy's default `allowed-idents-below-min-chars` still permits `i`, `j`, `x`, `y`, `z`, `w`, and `n`, and parameters that keep a trait's own name (such as `f` in `fmt::Display::fmt`) are not flagged either; prefer descriptive names (e.g. `idx`) anyway.
+
+Pure functions whose result matters carry `#[must_use]`, private ones included (clippy's `must_use_candidate` only flags public items), e.g., `FunctionDumper::new()`, `string_dirname()`, and `filter_printable_chars()`.
+
+Use `#[expect(clippy::some_lint, reason = "...")]`, never `#[allow]`, to locally suppress a lint that genuinely cannot be avoided, in both library code and tests. The only one in the codebase: `panic_in_result_fn` (test assertions, as a module-level `#![expect]` in `tests/main.rs`).
+
+Taplo enforces TOML formatting (`.taplo.toml`: 120-char line width, 4-space indent).
+
+The crate-level documentation in `src/lib.rs` is assembled in a specific order to satisfy two restriction lints simultaneously, and should not be "simplified" back to a plain `#![doc = include_str!("../README.md")]`:
+
+- `#![doc = env!("CARGO_PKG_DESCRIPTION")]` is always present (pulls the `description` from `Cargo.toml` with no duplication) so the crate is documented in every build configuration — this satisfies `missing_docs`, which runs without `--cfg doc`.
+- `#![cfg_attr(doc, doc = include_str!("../README.md"))]` pulls in the README only under `cfg(doc)`, satisfying `clippy::doc_include_without_cfg`.
+- The `#![doc = ""]` between them forces a Markdown paragraph break so the description and the README's leading heading don't merge.
 
 ## Tests
 
@@ -164,13 +183,25 @@ The tests for reusing a function's output files (`DumpedFunction::copy_to`) move
 
 It covers the only branching in `src/main.rs`; IDA never opens a database here, so it's fast.
 
-All scenarios run sequentially in the same process, each with its own `IDB::open()`. The harness stops at the first failed check. Test harness progress messages are printed to stderr.
+Each scenario uses its own `IDB::open()`.
 
 Uses the `walkdir` dev-dependency. Requires a live IDA installation.
+
+Conventions shared by the augur, haruspex, and rhabdomancer harnesses:
+
+- All scenarios run sequentially in the same process; the harness stops at the first failed check, and its progress messages go to stderr.
+- Expected values that pin an external contract (CLI output lines, summaries, file names, annotation tags, error substrings) are literals, never production constants, so that an accidental change fails the tests.
+- Expected errors are matched against the full error chain (`format!("{err:#}")`), i.e., what users see; OS-dependent failures are checked by downcasting to `io::ErrorKind`, not by message.
+- Only the module-level `#![expect(clippy::panic_in_result_fn)]` is needed: fallible lookups use `.context(...)?` instead of `expect`, and conversions use `try_from` instead of `as`.
+- New checks must be shown to fail: temporarily break the behavior they guard, run the suite, restore. If an earlier check catches the break first, break it differently, so that the new check is shown to fail on its own.
 
 ## IDA integration notes
 
 - `idalib::force_batch_mode()` must be called before opening any database (suppresses IDA UI); `main()` and the test harness both call it first.
+- IDA must run on the main thread and isn't thread-safe, so standard `#[test]` functions, which run on worker threads, can't use it: that's why the integration tests use a custom harness (`harness = false`).
+- Objects derived from an `IDB` (e.g., `Function`, `CFunction`) must be dropped before the `IDB` itself, since their destructors call into IDA: idalib's lifetimes don't enforce this at implicit scope-end drops, and getting it wrong hangs the process.
+- Names from the analyzed binary (function names, strings) are untrusted: print them escaped with `str::escape_debug()` (or `{:?}`) at the print site, and build file names from them only through a sanitizer.
+- To probe IDA's view of a binary, write a temporary `examples/` program (`cargo run --example ...`), then delete it.
 - `IDB::open()` doesn't save the database on close, so no IDB file is left next to the binary (checked by `check_no_idb_file()`).
 - idalib decompiles with `DECOMP_NO_CACHE`, so every decompilation is a full one: each function referencing strings is decompiled at most once per run (`DumpCache`), besides the `recover_strings()` pre-pass.
 - Decompiling only queues the strings it recovers for auto-analysis, so `recover_strings()` calls `auto_wait()` before rebuilding the string list.
