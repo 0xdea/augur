@@ -25,6 +25,30 @@ use idalib::xref::{XRef, XRefQuery};
 /// `None` means that the function failed to decompile, so it isn't retried.
 type DumpCache = HashMap<Address, Option<DumpedFunction>>;
 
+/// Counts of the cross-references to strings found by [`FunctionDumper`].
+///
+/// References from thunks aren't counted.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+struct StringUses {
+    /// Uses in functions whose pseudocode was dumped.
+    dumped: usize,
+    /// Uses in functions that can't be decompiled, which were skipped.
+    skipped: usize,
+    /// References outside any function, printed as `[unknown]`.
+    outside_functions: usize,
+}
+
+impl StringUses {
+    /// Adds the counts in `other` to these ones.
+    const fn merge(&mut self, other: Self) {
+        self.dumped = self.dumped.saturating_add(other.dumped);
+        self.skipped = self.skipped.saturating_add(other.skipped);
+        self.outside_functions = self
+            .outside_functions
+            .saturating_add(other.outside_functions);
+    }
+}
+
 /// Dumps pseudocode and type definitions of the functions that reference
 /// strings, decompiling each function at most once per run.
 struct FunctionDumper<'a> {
@@ -47,15 +71,16 @@ impl<'a> FunctionDumper<'a> {
     /// Dumps pseudocode and type definitions of each function that references
     /// the strings in the IDB into `dirpath`, organized by string.
     ///
-    /// Returns the number of string uses in functions that were dumped, which
-    /// may be zero.
+    /// Returns how many string uses were dumped and skipped, and how many
+    /// references to strings are outside any function. Any of these counts may
+    /// be zero.
     ///
     /// # Errors
     ///
     /// Returns [`HaruspexError`] if the output files cannot be created, or if the
     /// Hex-Rays decompiler license is not available for the target binary.
-    fn dump_all(&mut self, dirpath: &Path) -> Result<usize, HaruspexError> {
-        let mut string_uses_count = 0_usize;
+    fn dump_all(&mut self, dirpath: &Path) -> Result<StringUses, HaruspexError> {
+        let mut uses = StringUses::default();
 
         for (addr, string) in self.idb.strings().iter() {
             println!("\n{addr:#X} {string:?}");
@@ -63,11 +88,10 @@ impl<'a> FunctionDumper<'a> {
             // Traverse XREFs to string and dump the related pseudocode and type
             // definitions to the output files.
             let string_dirpath = dirpath.join(string_dirname(addr, &string));
-            let count = self.traverse_xrefs(addr, &string_dirpath)?;
-            string_uses_count = string_uses_count.saturating_add(count);
+            uses.merge(self.traverse_xrefs(addr, &string_dirpath)?);
         }
 
-        Ok(string_uses_count)
+        Ok(uses)
     }
 
     /// Iteratively traverses the XREFs to the string at `addr`, and dumps
@@ -75,36 +99,44 @@ impl<'a> FunctionDumper<'a> {
     /// `dirpath`.
     ///
     /// Functions that cannot be decompiled are skipped, without affecting the
-    /// other XREFs. Returns the number of string uses in functions that were
-    /// dumped.
+    /// other XREFs. Returns how many of the XREFs are uses that were dumped and
+    /// skipped, and how many are outside any function.
     ///
     /// # Errors
     ///
     /// Returns the appropriate [`HaruspexError`] if the output files cannot be
     /// created, or if the Hex-Rays decompiler license is not available for the
     /// target binary.
-    fn traverse_xrefs(&mut self, addr: Address, dirpath: &Path) -> Result<usize, HaruspexError> {
+    fn traverse_xrefs(
+        &mut self,
+        addr: Address,
+        dirpath: &Path,
+    ) -> Result<StringUses, HaruspexError> {
         let idb = self.idb;
-        let mut string_uses_count = 0_usize;
+        let mut uses = StringUses::default();
 
         for xref in iter::successors(idb.first_xref_to(addr, XRefQuery::ALL), XRef::next_to) {
             let from = xref.from();
 
             // If XREF is in a function, dump the function's pseudocode and type
             // definitions, otherwise only print its address.
-            if let Some(func) = idb.function_at(from) {
-                // Only count the string use if the function was dumped.
-                if !func.flags().contains(FunctionFlags::THUNK)
-                    && self.dump_function_pseudocode(&func, from, dirpath)?
-                {
-                    string_uses_count = string_uses_count.saturating_add(1);
-                }
-            } else {
+            let Some(func) = idb.function_at(from) else {
                 println!("{from:#X} in [unknown]");
+                uses.outside_functions = uses.outside_functions.saturating_add(1);
+                continue;
+            };
+            if func.flags().contains(FunctionFlags::THUNK) {
+                continue;
+            }
+
+            if self.dump_function_pseudocode(&func, from, dirpath)? {
+                uses.dumped = uses.dumped.saturating_add(1);
+            } else {
+                uses.skipped = uses.skipped.saturating_add(1);
             }
         }
 
-        Ok(string_uses_count)
+        Ok(uses)
     }
 
     /// Dumps pseudocode of `func` into `dirpath` and prints XREF address,
@@ -143,9 +175,14 @@ impl<'a> FunctionDumper<'a> {
             Entry::Vacant(entry) => entry.insert(decompile_to_file(self.idb, func, &output_path)?),
         };
 
+        // The name comes from the analyzed binary, so escape it to keep terminal
+        // escape sequences and other non-printable chars (e.g., bidi overrides)
+        // out of the output.
+        let shown_name = func_name.escape_debug();
+
         // `None` means the function failed to decompile, so it isn't retried.
         let Some(dumped_func) = cached.as_mut() else {
-            println!("{from:#X} in {func_name} -> [decompilation failed]");
+            println!("{from:#X} in {shown_name} -> [decompilation failed]");
             return Ok(false);
         };
 
@@ -156,14 +193,14 @@ impl<'a> FunctionDumper<'a> {
         let pseudocode = dumped_func.pseudocode.display();
         match &dumped_func.types {
             Some(types) => println!(
-                "{from:#X} in {func_name} -> `{pseudocode}` + `{}`",
+                "{from:#X} in {shown_name} -> `{pseudocode}` + `{}`",
                 // A path built by `with_extension` always has a file name.
                 types
                     .file_name()
                     .map_or(types.as_path(), Path::new)
                     .display()
             ),
-            None => println!("{from:#X} in {func_name} -> `{pseudocode}`"),
+            None => println!("{from:#X} in {shown_name} -> `{pseudocode}`"),
         }
 
         Ok(true)
@@ -211,14 +248,14 @@ pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
 
     // Remove the output directory, which is empty or only partially populated, if
     // anything goes wrong, including when no string uses were found.
-    let string_uses_count = extract_string_uses(&mut idb, &dirpath)
+    let uses = extract_string_uses(&mut idb, &dirpath)
         .map_err(anyhow::Error::from)
-        .and_then(|count| {
+        .and_then(|uses| {
             anyhow::ensure!(
-                count > 0,
+                uses.dumped > 0,
                 "no string uses were found, check your input file"
             );
-            Ok(count)
+            Ok(uses)
         })
         .inspect_err(|_| {
             if let Err(cleanup_err) = fs::remove_dir_all(&dirpath) {
@@ -231,7 +268,10 @@ pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
 
     eprintln!();
     eprintln!(
-        "[+] Found {string_uses_count} string uses in functions, decompiled into `{}`",
+        "[+] Found {} string uses in functions ({} skipped, {} unknown), decompiled into `{}`",
+        uses.dumped,
+        uses.skipped,
+        uses.outside_functions,
         dirpath.display()
     );
     eprintln!(
@@ -240,20 +280,21 @@ pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
         start.elapsed().as_secs_f64()
     );
 
-    Ok(string_uses_count)
+    Ok(uses.dumped)
 }
 
 /// Recovers strings, then dumps pseudocode and type definitions of each
 /// function that references them into `dirpath`, organized by string.
 ///
-/// Returns the number of string uses in functions that were dumped, which may
-/// be zero.
+/// Returns how many string uses were dumped and skipped, and how many
+/// references to strings are outside any function. Any of these counts may be
+/// zero.
 ///
 /// # Errors
 ///
 /// Returns [`HaruspexError`] if the output files cannot be created, or if the
 /// Hex-Rays decompiler license is not available for the target binary.
-fn extract_string_uses(idb: &mut IDB, dirpath: &Path) -> Result<usize, HaruspexError> {
+fn extract_string_uses(idb: &mut IDB, dirpath: &Path) -> Result<StringUses, HaruspexError> {
     // Leverage the full power of IDA to recover strings during decompilation.
     eprintln!();
     eprintln!("[*] Decompiling all functions and recovering strings...");

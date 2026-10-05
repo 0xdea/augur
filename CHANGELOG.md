@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Update haruspex to 1.0, replacing augur's own decompilation, license checks, and output file reuse with haruspex's
   `decompile`, `decompile_to_file`, and `DumpedFunction::copy_to`.
 - Document how the output directory is named after the input file.
+- Report string uses in functions that can't be decompiled and references outside functions in the final summary.
+- Escape non-printable chars in the function names that augur prints, since names come from the analyzed binary.
 - Improve code organization and style.
 - Update documentation.
 
