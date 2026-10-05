@@ -312,15 +312,6 @@ fn check_skipped_use_has_no_output(dirpath: &Path) {
     eprintln!("Ok.");
 }
 
-/// Checks that `run` succeeds with an existing but empty output directory, and
-/// returns the number of string uses that were dumped (unlike the skipped and
-/// unknown ones, of which `DOX_SIG_PARSER` has different numbers).
-fn check_empty_output_dir_succeeds(n_uses: usize) {
-    eprint!("[*] Checking `run` succeeds when output directory is empty... ");
-    assert_eq!(n_uses, N_USES, "wrong number of string uses returned");
-    eprintln!("Ok.");
-}
-
 /// Checks the number of created subdirectories in the output directory.
 fn check_number_of_subdirectories(dirpath: &Path) -> anyhow::Result<()> {
     eprint!("[*] Checking number of subdirectories in output directory... ");
@@ -496,7 +487,7 @@ fn check_no_string_uses_error(result: anyhow::Result<usize>) -> anyhow::Result<(
     Ok(())
 }
 
-/// Checks that the output directory was removed on error.
+/// Checks that the output directory at `dirpath` was removed on error.
 fn check_output_dir_removed(dirpath: &Path) {
     eprint!("[*] Checking output directory is removed on error... ");
     assert!(
@@ -541,6 +532,15 @@ fn check_existing_output_dir_preserved(existing_file: &Path) -> anyhow::Result<(
     Ok(())
 }
 
+/// Checks that `run` succeeds with an existing but empty output directory, and
+/// returns the number of string uses that were dumped (unlike the skipped and
+/// unknown ones, of which `DOX_SIG_PARSER` has different numbers).
+fn check_empty_output_dir_succeeds(n_uses: usize) {
+    eprint!("[*] Checking `run` succeeds when output directory is empty... ");
+    assert_eq!(n_uses, N_USES, "wrong number of string uses returned");
+    eprintln!("Ok.");
+}
+
 /// Checks that `run` returns the expected error for a binary that doesn't
 /// exist.
 fn check_missing_binary_error(result: anyhow::Result<usize>) -> anyhow::Result<()> {
@@ -556,7 +556,7 @@ fn check_missing_binary_error(result: anyhow::Result<usize>) -> anyhow::Result<(
     Ok(())
 }
 
-/// Checks that no output directory was created.
+/// Checks that no output directory was created at `dirpath`.
 fn check_no_output_dir_created(dirpath: &Path) {
     eprint!("[*] Checking no output directory is created... ");
     assert!(
@@ -567,8 +567,8 @@ fn check_no_output_dir_created(dirpath: &Path) {
     eprintln!("Ok.");
 }
 
-/// Checks that the augur binary run with the invalid arguments `args` printed
-/// usage information to stderr, nothing to stdout, and failed.
+/// Checks that the augur binary failed and printed usage information to
+/// stderr, and nothing to stdout, for the invalid `args`.
 fn check_usage(output: &process::Output, args: &[&str]) {
     eprint!("[*] Checking usage is printed for arguments {args:?}... ");
     assert!(

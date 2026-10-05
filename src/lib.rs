@@ -208,8 +208,15 @@ impl<'a> FunctionDumper<'a> {
 }
 
 /// Extracts strings and pseudocode/type definitions of each function that
-/// references them from the binary at `filepath` and saves them in
-/// `filepath.str`.
+/// references them from the binary file at `filepath`, and saves them in an
+/// output directory next to it.
+///
+/// The output directory is named after `filepath` with its extension, if any,
+/// replaced by `.str`: `foo.exe` produces `foo.str`, and so does `foo`.
+/// Binaries that differ only in their extension therefore share the same
+/// output directory, which must either not exist or be empty. If anything goes
+/// wrong after it is created, including when no string uses were found, it is
+/// removed.
 ///
 /// Returns the number of string uses in functions whose pseudocode was dumped.
 ///
@@ -218,8 +225,7 @@ impl<'a> FunctionDumper<'a> {
 /// Returns [`anyhow::Error`] if the binary file cannot be analyzed, if the
 /// decompiler or its license is not available, if the output directory already
 /// exists and is not empty, if the output files cannot be created, or if no
-/// string uses were found. On any error after the output directory is created,
-/// the directory is removed.
+/// string uses were found.
 pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
     let start = Instant::now();
     let filepath = filepath.as_ref();
