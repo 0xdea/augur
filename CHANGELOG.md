@@ -19,6 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Match expected errors against the full error chain in integration tests, like rhabdomancer.
 - Refactor `traverse_xrefs` and `dump_function_pseudocode` into methods of a `FunctionDumper` context struct.
 - Return a concrete error type from `extract_string_uses`, converting to `anyhow` only in `run`.
+- Update haruspex to 1.0, replacing augur's own decompilation, license checks, and output file reuse with haruspex's
+  `decompile`, `decompile_to_file`, and `DumpedFunction::copy_to`.
+- Document how the output directory is named after the input file.
 - Improve code organization and style.
 - Update documentation.
 

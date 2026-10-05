@@ -5,121 +5,25 @@
 
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
-use std::ffi::OsStr;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::time::Instant;
-use std::{fs, io, iter};
+use std::{fs, iter};
 
 use anyhow::Context as _;
 use haruspex::{
-    ArgHintsMode, HaruspexError, dump_cfunc_pseudocode_to_file, dump_cfunc_types_to_file,
+    ArgHintsMode, DumpedFunction, HaruspexError, decompile, decompile_to_file, function_name,
     output_path_for_function, prepare_output_dir, sanitize_filename,
 };
-use idalib::decompiler::HexRaysErrorCode;
+use idalib::Address;
 use idalib::func::{Function, FunctionFlags};
 use idalib::idb::IDB;
 use idalib::xref::{XRef, XRefQuery};
-use idalib::{Address, IDAError};
 
 /// Output files of each function decompiled so far, keyed by function start
 /// address.
 ///
 /// `None` means that the function failed to decompile, so it isn't retried.
 type DumpCache = HashMap<Address, Option<DumpedFunction>>;
-
-/// Output files already written for a decompiled function, used to avoid
-/// decompiling it again.
-///
-/// Created by [`DumpedFunction::decompile_to`] on first use, and reused via
-/// [`DumpedFunction::copy_to`] for any further string use.
-#[derive(Clone, Debug, Eq, PartialEq)]
-struct DumpedFunction {
-    /// Path of the most recently written `.c` pseudocode file.
-    source: PathBuf,
-    /// Whether a sibling `.h` file with type definitions was also written.
-    has_header: bool,
-}
-
-impl DumpedFunction {
-    /// Decompiles `func` and writes its output files at `output_path`, creating the
-    /// parent directory of `output_path` only once there is something to write in
-    /// it.
-    ///
-    /// Type definitions are best-effort: the `.h` file is only written if there are
-    /// any, and a failure to dump them is ignored. Returns `None` if `func` cannot
-    /// be decompiled.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`HaruspexError`] if the output files cannot be created, or if the
-    /// Hex-Rays decompiler license is not available for the target binary.
-    fn decompile_to(
-        idb: &IDB,
-        func: &Function<'_>,
-        output_path: &Path,
-    ) -> Result<Option<Self>, HaruspexError> {
-        let cfunc = match idb.decompile(func) {
-            Ok(cfunc) => cfunc,
-
-            // The Hex-Rays decompiler license is not available.
-            Err(err) if is_license_error(&err) => return Err(err.into()),
-
-            // The function can't be decompiled.
-            Err(_) => return Ok(None),
-        };
-
-        // Only create the output directory once there is something to write in it.
-        create_parent_dir(output_path)?;
-        dump_cfunc_pseudocode_to_file(&cfunc, output_path)?;
-
-        let has_header =
-            match dump_cfunc_types_to_file(idb, &cfunc, output_path.with_extension("h")) {
-                Ok(()) => true,
-
-                // The Hex-Rays decompiler license is not available.
-                Err(HaruspexError::DecompileFailed(err)) if is_license_error(&err) => {
-                    return Err(err.into());
-                }
-
-                // Type definitions are best-effort: no header if there are none or dumping them
-                // failed.
-                Err(HaruspexError::TypesEmpty | HaruspexError::DecompileFailed(_)) => false,
-
-                // Propagate any other error.
-                Err(err) => return Err(err),
-            };
-
-        Ok(Some(Self {
-            source: output_path.to_owned(),
-            has_header,
-        }))
-    }
-
-    /// Makes the output files available at `output_path`, copying them from their
-    /// previous location unless they are already in place, then tracks the copy so
-    /// the files aren't copied again.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`io::Error`] if the output directory cannot be created or the
-    /// output files cannot be copied.
-    fn copy_to(&mut self, output_path: &Path) -> io::Result<()> {
-        if self.source != output_path {
-            create_parent_dir(output_path)?;
-            fs::copy(&self.source, output_path)?;
-
-            if self.has_header {
-                fs::copy(
-                    self.source.with_extension("h"),
-                    output_path.with_extension("h"),
-                )?;
-            }
-
-            output_path.clone_into(&mut self.source);
-        }
-        Ok(())
-    }
-}
 
 /// Dumps pseudocode and type definitions of the functions that reference
 /// strings, decompiling each function at most once per run.
@@ -229,15 +133,14 @@ impl<'a> FunctionDumper<'a> {
         from: Address,
         dirpath: &Path,
     ) -> Result<bool, HaruspexError> {
-        let func_name = func.name().unwrap_or_else(|| "[no name]".into());
-        let output_path = output_path_for_function(func, dirpath);
+        // Get the name only once, for both the output path and the output line.
+        let func_name = function_name(func);
+        let output_path = output_path_for_function(&func_name, func.start_address(), dirpath);
 
         // Decompile the function on first use only.
         let cached = match self.dumped.entry(func.start_address()) {
             Entry::Occupied(entry) => entry.into_mut(),
-            Entry::Vacant(entry) => {
-                entry.insert(DumpedFunction::decompile_to(self.idb, func, &output_path)?)
-            }
+            Entry::Vacant(entry) => entry.insert(decompile_to_file(self.idb, func, &output_path)?),
         };
 
         // `None` means the function failed to decompile, so it isn't retried.
@@ -250,18 +153,17 @@ impl<'a> FunctionDumper<'a> {
         // string.
         dumped_func.copy_to(&output_path)?;
 
-        if dumped_func.has_header {
-            println!(
-                "{from:#X} in {func_name} -> `{}` + `{}`",
-                output_path.display(),
-                output_path
-                    .with_extension("h")
+        let pseudocode = dumped_func.pseudocode.display();
+        match &dumped_func.types {
+            Some(types) => println!(
+                "{from:#X} in {func_name} -> `{pseudocode}` + `{}`",
+                // A path built by `with_extension` always has a file name.
+                types
                     .file_name()
-                    .map(OsStr::to_string_lossy)
-                    .unwrap_or_default()
-            );
-        } else {
-            println!("{from:#X} in {func_name} -> `{}`", output_path.display());
+                    .map_or(types.as_path(), Path::new)
+                    .display()
+            ),
+            None => println!("{from:#X} in {func_name} -> `{pseudocode}`"),
         }
 
         Ok(true)
@@ -296,16 +198,16 @@ pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
     eprintln!("[-] File type: {:?}", idb.meta().filetype());
     eprintln!();
 
-    anyhow::ensure!(idb.decompiler_available(), "decompiler is not available");
-
-    // Disable argument name hints.
-    idb.modify_decompiler_config(ArgHintsMode::Disabled.directive())
-        .context("failed to set decompiler's argument hints mode")?;
+    // Disable argument name hints, which also checks that a decompiler is
+    // available.
+    ArgHintsMode::Disabled.apply(&mut idb)?;
 
     // Create a new output directory, returning an error if it already exists and
     // it's not empty.
     let dirpath = filepath.with_extension("str");
+    eprintln!("[*] Preparing output directory `{}`", dirpath.display());
     prepare_output_dir(&dirpath)?;
+    eprintln!("[+] Output directory is ready");
 
     // Remove the output directory, which is empty or only partially populated, if
     // anything goes wrong, including when no string uses were found.
@@ -367,20 +269,19 @@ fn extract_string_uses(idb: &mut IDB, dirpath: &Path) -> Result<usize, HaruspexE
 ///
 /// # Errors
 ///
-/// Returns an [`IDAError`] if the Hex-Rays decompiler license is not available
-/// for the target binary.
-fn recover_strings(idb: &mut IDB) -> Result<(), IDAError> {
+/// Returns [`HaruspexError`] if no function can be decompiled, e.g., because
+/// the Hex-Rays decompiler license is not available for the target binary.
+fn recover_strings(idb: &mut IDB) -> Result<(), HaruspexError> {
     for (_id, func) in idb.functions() {
         if func.flags().contains(FunctionFlags::THUNK) {
             continue;
         }
 
-        // Bail out early if the Hex-Rays decompiler license is not available, ignore
-        // other IDA errors.
-        if let Err(err) = idb.decompile(&func)
-            && is_license_error(&err)
-        {
-            return Err(err);
+        // Bail out early if no function can be decompiled, ignore functions that
+        // can't be decompiled.
+        match decompile(idb, &func) {
+            Ok(_) | Err(HaruspexError::Decompile { .. }) => {}
+            Err(err) => return Err(err),
         }
     }
 
@@ -392,23 +293,6 @@ fn recover_strings(idb: &mut IDB) -> Result<(), IDAError> {
     idb.strings().rebuild();
 
     Ok(())
-}
-
-/// Returns `true` if `err` means that the Hex-Rays decompiler license is not
-/// available for the target binary.
-#[must_use]
-fn is_license_error(err: &IDAError) -> bool {
-    matches!(err, IDAError::HexRays(hexrays_err) if hexrays_err.code() == HexRaysErrorCode::License)
-}
-
-/// Creates the parent directory of `filepath` and all its missing ancestors, if
-/// `filepath` has a parent.
-///
-/// # Errors
-///
-/// Returns [`io::Error`] if the directory cannot be created.
-fn create_parent_dir(filepath: &Path) -> io::Result<()> {
-    filepath.parent().map_or(Ok(()), fs::create_dir_all)
 }
 
 /// Returns the name of the output subdirectory for `string` at `addr`, i.e.,
@@ -437,109 +321,10 @@ fn filter_printable_chars(string: &str) -> String {
 }
 
 #[cfg(test)]
-#[expect(clippy::panic_in_result_fn, reason = "panics are allowed in test code")]
 mod tests {
     use std::path::Component;
-    use std::{env, process};
 
     use super::*;
-
-    /// Returns a fresh, empty temporary directory scoped to `label` and the current
-    /// process.
-    fn test_dir(label: &str) -> io::Result<PathBuf> {
-        let dir = env::temp_dir().join(format!("augur_{label}_{}", process::id()));
-        if dir.exists() {
-            fs::remove_dir_all(&dir)?;
-        }
-        fs::create_dir_all(&dir)?;
-        Ok(dir)
-    }
-
-    /// Writes a `.c` file (and optionally a `.h` file) at `source` and returns the
-    /// matching [`DumpedFunction`].
-    fn dumped_function(source: PathBuf, has_header: bool) -> io::Result<DumpedFunction> {
-        fs::write(&source, "pseudocode")?;
-        if has_header {
-            fs::write(source.with_extension("h"), "types")?;
-        }
-        Ok(DumpedFunction { source, has_header })
-    }
-
-    #[test]
-    fn copy_to_does_nothing_if_files_are_already_in_place() -> io::Result<()> {
-        let dir = test_dir("copy_in_place")?;
-        let source = dir.join("func@1000.c");
-        let mut dumped_func = dumped_function(source.clone(), true)?;
-
-        dumped_func.copy_to(&source)?;
-
-        assert_eq!(dumped_func.source, source, "source should be unchanged");
-        assert_eq!(
-            dir.read_dir()?.count(),
-            2,
-            "no files should be added or removed"
-        );
-        fs::remove_dir_all(&dir)
-    }
-
-    #[test]
-    fn copy_to_copies_source_and_header_and_tracks_the_copy() -> io::Result<()> {
-        let dir = test_dir("copy_header")?;
-        let dirpath = dir.join("string_b");
-        fs::create_dir_all(&dirpath)?;
-        let mut dumped_func = dumped_function(dir.join("func@1000.c"), true)?;
-        let output_path = dirpath.join("func@1000.c");
-
-        dumped_func.copy_to(&output_path)?;
-
-        assert_eq!(
-            fs::read_to_string(&output_path)?,
-            "pseudocode",
-            "source file should be copied"
-        );
-        assert_eq!(
-            fs::read_to_string(output_path.with_extension("h"))?,
-            "types",
-            "header file should be copied"
-        );
-        assert_eq!(
-            dumped_func.source, output_path,
-            "source should point at the copy, to avoid copying it again"
-        );
-        fs::remove_dir_all(&dir)
-    }
-
-    #[test]
-    fn copy_to_without_header_copies_only_source() -> io::Result<()> {
-        let dir = test_dir("copy_no_header")?;
-        let dirpath = dir.join("string_b");
-        fs::create_dir_all(&dirpath)?;
-        let mut dumped_func = dumped_function(dir.join("func@1000.c"), false)?;
-        let output_path = dirpath.join("func@1000.c");
-
-        dumped_func.copy_to(&output_path)?;
-
-        assert!(output_path.is_file(), "source file should be copied");
-        assert!(
-            !output_path.with_extension("h").exists(),
-            "no header file should be created"
-        );
-        fs::remove_dir_all(&dir)
-    }
-
-    #[test]
-    fn copy_to_creates_missing_output_directory() -> io::Result<()> {
-        let dir = test_dir("copy_missing_dir")?;
-        let dirpath = dir.join("string_b");
-        let mut dumped_func = dumped_function(dir.join("func@1000.c"), false)?;
-        let output_path = dirpath.join("func@1000.c");
-
-        dumped_func.copy_to(&output_path)?;
-
-        assert!(dirpath.is_dir(), "output directory should be created");
-        assert!(output_path.is_file(), "source file should be copied");
-        fs::remove_dir_all(&dir)
-    }
 
     #[test]
     fn string_dirname_wraps_uppercase_hex_address_and_string() {

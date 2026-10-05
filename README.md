@@ -89,10 +89,12 @@ Alternatively, you can build from [source](https://github.com/0xdea/augur):
    ```sh
    augur <binary_file>
    ```
-4. Find the extracted pseudocode and type definitions of each decompiled function in the `<binary_file>.str` directory, organized by string:
+4. Find the extracted pseudocode and type definitions of each decompiled function, organized by string, in the output
+   directory next to `<binary_file>`, named after it with its extension, if any, replaced by `.str` (e.g., `foo.exe` and
+   `foo` both produce `foo.str`, so binaries that differ only in their extension share the same output directory):
    ```sh
-   vim <binary_file>.str
-   code <binary_file>.str
+   vim foo.str
+   code foo.str
    ```
 
 ## Compatibility
