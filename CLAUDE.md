@@ -2,39 +2,46 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## What This Project Is
+## What this is
 
 **Augur** is an IDA headless plugin (written in Rust) that extracts strings and related pseudocode from binaries. It uses idalib's headless SDK to auto-analyze a binary, finds all string XREFs, decompiles the referencing functions, and writes the pseudocode to a `<binary>.str/` output directory organized by string.
 
-## Build & Test Commands
+## Build requirements
+
+- IDA 9.4+ (see the README's compatibility table) with the Hex-Rays decompiler and a valid license, with `IDADIR` set to the installation directory at both build time and runtime. The build script (`build.rs`, via `idalib-build`) checks common installation paths if it's unset, and only warns if it can't find IDA; for non-standard locations it must be set explicitly.
+- LLVM/Clang, used by bindgen when building `idalib`. On Windows, `LIBCLANG_PATH` must also be set to the LLVM/Clang `bin` directory.
+- Rust edition 2024.
+
+## Commands
 
 ```bash
-# Build (requires IDADIR to be set at runtime, not just compile time)
-cargo build --release --locked
+# Build
+cargo build --release --locked     # optimized (LTO, stripped, O3)
+cargo build --locked               # debug build (no debug info, for faster startup)
 
-# Run all tests (integration tests against tests/data/dox_sig_parser and tests/data/no_strings binaries)
-cargo test --locked
+# Unit tests (no IDA database needed)
+cargo test --lib --locked
 
-# Run only the integration tests
+# Integration tests (custom harness, needs a working IDA installation)
 cargo test --test tests --locked
 
-# Lint
+# Lint and format (CI enforces these as errors)
 cargo fmt --all --check
-cargo clippy --all-targets --locked -- -D warnings
+cargo clippy --workspace --all-targets --locked -- -D warnings
 
-# Check for known-vulnerable dependencies
+# Documentation (CI enforces this as an error)
+RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps --locked
+
+# Dependency vulnerability audit (requires cargo-audit)
 cargo audit
 
-# Check docs build cleanly (CI treats warnings as errors here too)
-RUSTDOCFLAGS="-D warnings" cargo doc --no-deps --locked
-
-# Check semver compatibility
+# Semver compatibility (requires cargo-semver-checks)
 cargo semver-checks
 ```
 
-The `IDADIR` environment variable must point to the IDA installation directory at **runtime** (not just compile time). The build script checks common installation paths if it's unset, but for non-standard locations it must be set explicitly.
+`--workspace` follows the `rust-style` skill; this is a single crate, so it is equivalent to CI's `cargo clippy --all-targets --locked -- -D warnings`. `--no-deps` matches CI's `build.yml` doc step and skips documenting dependencies (`doc.yml`, which publishes to `gh-pages`, runs a plain `cargo doc --locked`).
 
-On Windows, `LIBCLANG_PATH` must also be set to the LLVM/Clang bin directory.
+CI's own `test` step only runs `cargo test --no-run` — a compile-only smoke check. Both test suites link against the IDA libraries, and the integration suite also needs a working IDA installation to analyze binaries, which CI runners don't have, so both only run locally.
 
 ## Architecture
 
@@ -55,13 +62,24 @@ This is a **single-crate project** — no workspace, just `src/main.rs` (CLI ent
 
 - **`extract_string_uses(idb: &mut IDB, dirpath) -> Result<usize, HaruspexError>`**: Free function holding all the work that writes into the output directory. Calls `recover_strings()`, then builds a `FunctionDumper` and returns the count from `FunctionDumper::dump_all()`. Returns a concrete error type, like every function below `run()`, and may return a count of zero: rejecting zero uses is `run()`'s job.
 
-- **`run(filepath: impl AsRef<Path>) -> anyhow::Result<usize>`**: Public entry point. Converts `filepath` once with `as_ref()`, then opens the binary via `IDB::open()`, disables the Hex-Rays argument name hints with `ArgHintsMode::Disabled.apply(&mut idb)` (which also checks that a decompiler is available, and comes before any decompilation, so that every decompilation, including the `recover_strings()` pre-pass, picks up the config change), calls `haruspex::prepare_output_dir()` to set up the `<binary>.str/` directory (printing the `[*] Preparing output directory` and `[+] Output directory is ready` lines itself, since `prepare_output_dir` prints nothing), then calls `extract_string_uses()` and returns the number of dumped uses. The output directory is named after the binary with its extension, if any, replaced by `.str`, so `foo.exe` and `foo` both produce `foo.str`. `prepare_output_dir()` must stay before `extract_string_uses()` and outside the cleanup: this makes an existing non-empty directory fail fast, before the slow pre-pass, and ensures the cleanup never deletes a pre-existing directory with the user's previous results. Only `run()` converts errors to `anyhow`: it maps the `HaruspexError` from `extract_string_uses()` into an `anyhow::Error`, then rejects zero dumped uses with `anyhow::ensure!`, both inside the cleanup. This is the single cleanup point: if either step fails (including no string uses found), the output directory is removed and the original error is returned; if removing the directory fails too, a warning is printed to stderr. Informational/progress messages go to stderr; only the per-string and per-function result lines (address, name, output path) go to stdout. Prints total elapsed time on completion.
+- **`run(filepath: impl AsRef<Path>) -> anyhow::Result<usize>`**: Public entry point. Converts `filepath` once with `as_ref()`, then opens the binary via `IDB::open()`, disables the Hex-Rays argument name hints with `ArgHintsMode::Disabled.apply(&mut idb)` (which also checks that a decompiler is available, and comes before any decompilation, so that every decompilation, including the `recover_strings()` pre-pass, picks up the config change), calls `haruspex::prepare_output_dir()` to set up the `<binary>.str/` directory (printing the `[*] Preparing output directory` and `[+] Output directory is ready` lines itself, since `prepare_output_dir` prints nothing), then calls `extract_string_uses()` and returns the number of dumped uses. The output directory is named after the binary with its extension, if any, replaced by `.str`, so `foo.exe` and `foo` both produce `foo.str`. `prepare_output_dir()` must stay before `extract_string_uses()` and outside the cleanup: this makes an existing non-empty directory fail fast, before the slow pre-pass, and ensures the cleanup never deletes a pre-existing directory with the user's previous results. Only `run()` converts errors to `anyhow`: it maps the `HaruspexError` from `extract_string_uses()` into an `anyhow::Error`, then rejects zero dumped uses with `anyhow::ensure!`, both inside the cleanup. This is the single cleanup point: if either step fails (including no string uses found), the output directory is removed and the original error is returned; if removing the directory fails too, a warning is printed to stderr. Prints total elapsed time on completion.
 
 - **`string_dirname(addr, string: &str) -> String`**: Returns the output subdirectory name `_{addr:X}_{sanitized_string}_`, via `filter_printable_chars()` and haruspex's `sanitize_filename()` (which also truncates the string to 64 bytes on a char boundary, and replaces control chars). Since the string comes from the analyzed binary, the name must always be a single path component: `sanitize_filename()` replaces `/` and `.` on every platform, which prevents path traversal.
 
 - **`filter_printable_chars(string: &str) -> String`**: Returns only ASCII graphic characters and spaces — used to produce a human-readable string before passing to `sanitize_filename()`.
 
-### Output layout
+### External dependencies
+
+- **idalib** (0.10): Rust bindings for IDA's idalib (headless SDK).
+- **haruspex** (1.0, used from the local `../haruspex` checkout through `[patch.crates-io]` in `Cargo.toml` until it's published): Decompiler helper; provides `decompile`, `decompile_to_file`, `DumpedFunction` (and its `copy_to`), `function_name`, `output_path_for_function`, `sanitize_filename`, `prepare_output_dir`, `ArgHintsMode`, and `HaruspexError`.
+- **anyhow** (1.0): Error handling.
+- **idalib-build** (0.10): Build-time linkage configuration (used in `build.rs`).
+
+## Output
+
+Informational/progress messages go to stderr; only the per-string and per-function result lines (address, name, output path) go to stdout.
+
+Output layout:
 
 ```
 <binary>.str/
@@ -71,7 +89,7 @@ This is a **single-crate project** — no workspace, just `src/main.rs` (CLI ent
     ...
 ```
 
-### Error handling
+## Error handling
 
 - Functions below `run()` return `HaruspexError`; only `run()` uses `anyhow::Result<T>`.
 - Any error after the output directory is created (including Hex-Rays license errors and I/O errors) removes the output directory and exits with that error. `run()` is the only place that performs this cleanup.
@@ -80,27 +98,24 @@ This is a **single-crate project** — no workspace, just `src/main.rs` (CLI ent
 - Functions that fail to decompile are reported on stdout, skipped (not counted as string uses), and not retried.
 - If no string uses are found, the output directory is deleted and an error is returned.
 
-### External dependencies
-
-- **idalib** (0.10): Rust bindings for IDA's idalib (headless SDK).
-- **haruspex** (1.0, used from the local `../haruspex` checkout through `[patch.crates-io]` in `Cargo.toml` until it's published): Decompiler helper; provides `decompile`, `decompile_to_file`, `DumpedFunction` (and its `copy_to`), `function_name`, `output_path_for_function`, `sanitize_filename`, `prepare_output_dir`, `ArgHintsMode`, and `HaruspexError`.
-- **anyhow** (1.0): Error handling.
-- **idalib-build** (0.10): Build-time linkage configuration (used in `build.rs`).
-
 ## Lint policy
 
 All clippy lint groups (`all`, `pedantic`, `nursery`, `cargo`, `restriction`) are enabled as warnings in `Cargo.toml` and treated as errors by `cargo clippy -- -D warnings`. A small set of restriction lints are explicitly allowed (e.g. `implicit_return`, `question_mark_used`, `print_stdout`, `pattern_type_mismatch`). Use `anyhow`/`?` for error propagation and `Option` combinators instead of `unwrap`/`expect`. When a restriction lint must be suppressed, use `#[expect(..., reason = "...")]` rather than `#[allow(...)]`.
 
 ## Tests
 
-**Unit tests** (`src/lib.rs`, `#[cfg(test)]`): don't need an IDA database, and cover:
+### Unit tests
+
+`#[cfg(test)] mod tests` at the end of `src/lib.rs` doesn't need an IDA database, and covers:
 
 - `filter_printable_chars`
 - `string_dirname`: name format, stripping of non-printable chars, and no path traversal (the result must be a single `Component::Normal`)
 
 The tests for reusing a function's output files (`DumpedFunction::copy_to`) moved to haruspex together with the method.
 
-**Integration tests** (`tests/main.rs`): custom harness (`harness = false`) whose `main()` first calls `idalib::force_batch_mode()`, like the binary, then calls one `test_*()` function per scenario, which runs augur and then calls one `check_*()` function per assertion; each check prints its own `[*] Checking ...` progress line. `reset_output()` removes any stale IDB files (every extension in `IDB_EXTENSIONS`, shared with `check_no_idb_file()`) and output directory before each run, and again at the end of the scenarios that produce output, and the expected counts are module-level constants. Expected errors are matched against the full error chain (`format!("{err:#}")`), i.e., what users see. These conventions match rhabdomancer's harness. `test_binary_with_string_uses()` runs the real binary through `run_binary()` against `tests/data/dox_sig_parser`, pinning the CLI output with literals in the same analysis, and asserts:
+### Integration tests
+
+`tests/main.rs` holds the integration tests, with a custom harness (`harness = false`) whose `main()` first calls `idalib::force_batch_mode()`, like the binary, then calls one `test_*()` function per scenario, which runs augur and then calls one `check_*()` function per assertion; each check prints its own `[*] Checking ...` progress line. `reset_output()` removes any stale IDB files (every extension in `IDB_EXTENSIONS`, shared with `check_no_idb_file()`) and output directory before each run, and again at the end of the scenarios that produce output, and the expected counts are module-level constants. Expected errors are matched against the full error chain (`format!("{err:#}")`), i.e., what users see. These conventions match rhabdomancer's harness. `test_binary_with_string_uses()` runs the real binary through `run_binary()` against `tests/data/dox_sig_parser`, pinning the CLI output with literals in the same analysis, and asserts:
 
 - The binary exits successfully
 - stdout has exactly 39 blank lines and 39 string header lines (one per string, `N_STRINGS`), 18 string use lines (`N_USES`, only 5 without the `recover_strings()` pre-pass), 28 `[unknown]` lines (`N_UNKNOWN`), and nothing else
@@ -152,3 +167,17 @@ It covers the only branching in `src/main.rs`; IDA never opens a database here, 
 All scenarios run sequentially in the same process, each with its own `IDB::open()`. The harness stops at the first failed check. Test harness progress messages are printed to stderr.
 
 Uses the `walkdir` dev-dependency. Requires a live IDA installation.
+
+## IDA integration notes
+
+- `idalib::force_batch_mode()` must be called before opening any database (suppresses IDA UI); `main()` and the test harness both call it first.
+- `IDB::open()` doesn't save the database on close, so no IDB file is left next to the binary (checked by `check_no_idb_file()`).
+- idalib decompiles with `DECOMP_NO_CACHE`, so every decompilation is a full one: each function referencing strings is decompiled at most once per run (`DumpCache`), besides the `recover_strings()` pre-pass.
+- Decompiling only queues the strings it recovers for auto-analysis, so `recover_strings()` calls `auto_wait()` before rebuilding the string list.
+- Thunk functions (`FunctionFlags::THUNK`) are skipped.
+
+## CI workflows
+
+- **`build.yml`** — lint/build/test matrix across Linux, macOS, and Windows, plus a `zizmor` job that audits `.github/workflows/*.yml` for security issues (credential handling, injection, etc.).
+- **`doc.yml`** — builds rustdoc and pushes it to the `gh-pages` branch on `v*` tags; its `checkout` step needs persisted git credentials to `git push` later, so it carries a `# zizmor: ignore[artipacked]` suppression comment.
+- To suppress a specific zizmor finding, add an inline `# zizmor: ignore[<rule-id>]` comment on the flagged step with a short justification, rather than disabling the rule globally.
