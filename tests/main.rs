@@ -15,11 +15,19 @@ const IDB_EXTENSIONS: [&str; 6] = ["i64", "id0", "id1", "id2", "nam", "til"];
 const DOX_SIG_PARSER: &str = "./tests/data/dox_sig_parser";
 /// Target binary without string uses.
 const NO_STRINGS: &str = "./tests/data/no_strings";
+/// Target binary with a string used only in a function too big to decompile.
+const TOO_BIG: &str = "./tests/data/too_big";
 /// Target binary that doesn't exist.
 const MISSING: &str = "./tests/data/missing";
 
+/// Expected number of strings in `DOX_SIG_PARSER`, each printed on stdout
+/// after a blank line.
+const N_STRINGS: usize = 39;
 /// Expected number of string uses in functions in `DOX_SIG_PARSER`.
 const N_USES: usize = 18;
+/// Expected number of references to strings outside any function in
+/// `DOX_SIG_PARSER`.
+const N_UNKNOWN: usize = 28;
 /// Expected number of subdirectories in the output directory of
 /// `DOX_SIG_PARSER`.
 const N_SUBDIRS: usize = 10;
@@ -43,6 +51,7 @@ fn main() -> anyhow::Result<()> {
     idalib::force_batch_mode();
 
     test_binary_with_string_uses()?;
+    test_binary_with_skipped_uses()?;
     test_binary_without_string_uses()?;
     test_existing_output_dir()?;
     test_missing_binary()?;
@@ -52,13 +61,24 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Runs augur against a binary with string uses and checks its output.
+/// Runs the augur binary against a binary with string uses and checks what it
+/// prints and writes.
 fn test_binary_with_string_uses() -> anyhow::Result<()> {
     let dirpath = reset_output(DOX_SIG_PARSER)?;
 
-    let n_uses = augur::run(DOX_SIG_PARSER)?;
+    let output = run_binary(&[DOX_SIG_PARSER])?;
     eprintln!();
-    check_number_of_string_uses(n_uses);
+    check_binary_succeeded(&output);
+    check_number_of_output_lines(&output);
+    check_stdout_line(
+        &output,
+        "0x400C98 in sub_400C80 -> `./tests/data/dox_sig_parser.str/_401FF8__db_etc_ip-reputation_DoH_SERVER_LIST_/sub_400C80@400C80.c` + `sub_400C80@400C80.h`",
+    );
+    check_stdout_line(&output, "0x400088 in [unknown]");
+    check_summary(
+        &output,
+        "[+] Found 18 string uses in functions (0 skipped, 28 unknown), decompiled into `./tests/data/dox_sig_parser.str`",
+    );
     check_number_of_subdirectories(&dirpath)?;
     check_number_of_files(&dirpath);
     check_recovered_string_uses(&dirpath)?;
@@ -71,6 +91,28 @@ fn test_binary_with_string_uses() -> anyhow::Result<()> {
 
     // Remove the output directory and any IDB files at the end.
     reset_output(DOX_SIG_PARSER)?;
+    eprintln!();
+    Ok(())
+}
+
+/// Runs the augur binary against a binary with a string used only in a function
+/// too big to decompile, and checks that the use is reported and skipped.
+fn test_binary_with_skipped_uses() -> anyhow::Result<()> {
+    let dirpath = reset_output(TOO_BIG)?;
+
+    let output = run_binary(&[TOO_BIG])?;
+    eprintln!();
+    check_binary_succeeded(&output);
+    check_stdout_line(&output, "0x8 in too_big -> [decompilation failed]");
+    check_summary(
+        &output,
+        "[+] Found 1 string uses in functions (1 skipped, 0 unknown), decompiled into `./tests/data/too_big.str`",
+    );
+    check_skipped_use_has_no_output(&dirpath);
+    check_no_idb_file(TOO_BIG);
+
+    // Remove the output directory and any IDB files at the end.
+    reset_output(TOO_BIG)?;
     eprintln!();
     Ok(())
 }
@@ -89,22 +131,30 @@ fn test_binary_without_string_uses() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Runs augur with an existing, non-empty output directory and checks that its
-/// contents are preserved.
+/// Runs augur with an existing output directory, and checks that it fails
+/// without touching its contents if it's not empty, and succeeds if it's
+/// empty.
 fn test_existing_output_dir() -> anyhow::Result<()> {
-    let dirpath = reset_output(NO_STRINGS)?;
+    let dirpath = reset_output(DOX_SIG_PARSER)?;
     let existing_file = dirpath.join("existing.txt");
     fs::create_dir_all(&dirpath)?;
     fs::write(&existing_file, "previous results")?;
 
-    let result = augur::run(NO_STRINGS);
+    let result = augur::run(DOX_SIG_PARSER);
     eprintln!();
     check_existing_output_dir_error(result)?;
     check_existing_output_dir_preserved(&existing_file)?;
-    check_no_idb_file(NO_STRINGS);
+
+    // Leave the output directory in place, but empty.
+    fs::remove_file(&existing_file)?;
+    eprintln!();
+    let n_uses = augur::run(DOX_SIG_PARSER)?;
+    eprintln!();
+    check_empty_output_dir_succeeds(n_uses);
+    check_no_idb_file(DOX_SIG_PARSER);
 
     // Remove the output directory and any IDB files at the end.
-    reset_output(NO_STRINGS)?;
+    reset_output(DOX_SIG_PARSER)?;
     eprintln!();
     Ok(())
 }
@@ -171,10 +221,103 @@ fn run_binary(args: &[&str]) -> anyhow::Result<process::Output> {
     Ok(output)
 }
 
-/// Checks the number of string uses in functions.
-fn check_number_of_string_uses(n_uses: usize) {
-    eprint!("[*] Checking number of string uses in functions... ");
-    assert_eq!(n_uses, N_USES, "wrong number of string uses");
+/// Checks that the augur binary exited successfully.
+fn check_binary_succeeded(output: &process::Output) {
+    eprint!("[*] Checking binary exits successfully... ");
+    assert!(
+        output.status.success(),
+        "binary failed with {}",
+        output.status
+    );
+    eprintln!("Ok.");
+}
+
+/// Checks that stdout has a header line (after a blank line) per string, one
+/// line per string use in a function, and one per reference outside any
+/// function.
+fn check_number_of_output_lines(output: &process::Output) {
+    eprint!("[*] Checking number of stdout lines by kind... ");
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let count = |is_kind: fn(&str) -> bool| stdout.lines().filter(|line| is_kind(line)).count();
+
+    assert_eq!(
+        count(str::is_empty),
+        N_STRINGS,
+        "wrong number of blank lines"
+    );
+    assert_eq!(
+        count(|line| line.starts_with("0x") && line.contains(" \"")),
+        N_STRINGS,
+        "wrong number of string header lines"
+    );
+    assert_eq!(
+        count(|line| line.contains(" -> `")),
+        N_USES,
+        "wrong number of string use lines"
+    );
+    assert_eq!(
+        count(|line| line.ends_with(" in [unknown]")),
+        N_UNKNOWN,
+        "wrong number of lines for references outside any function"
+    );
+    assert_eq!(
+        stdout.lines().count(),
+        2 * N_STRINGS + N_USES + N_UNKNOWN,
+        "unexpected stdout lines"
+    );
+    eprintln!("Ok.");
+}
+
+/// Checks that stdout contains the known `line`, which pins the output format.
+fn check_stdout_line(output: &process::Output, line: &str) {
+    eprint!("[*] Checking stdout contains `{line}`... ");
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.lines().any(|stdout_line| stdout_line == line),
+        "known stdout line missing from:\n{stdout}"
+    );
+    eprintln!("Ok.");
+}
+
+/// Checks that stderr contains the final `summary`, which includes the skipped
+/// and unknown string uses.
+fn check_summary(output: &process::Output, summary: &str) {
+    eprint!("[*] Checking summary reports dumped, skipped, and unknown string uses... ");
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.lines().any(|line| line == summary),
+        "summary missing or wrong in stderr"
+    );
+    eprintln!("Ok.");
+}
+
+/// Checks that the string used only in a function that can't be decompiled
+/// has no output subdirectory, while the other string's use was dumped.
+fn check_skipped_use_has_no_output(dirpath: &Path) {
+    eprint!("[*] Checking a skipped string use has no output... ");
+    let skipped_dir = dirpath.join("_22312_used in a function too big to decompile_");
+    assert!(
+        !skipped_dir.exists(),
+        "unexpected output directory for a skipped string use: {}",
+        skipped_dir.display()
+    );
+    let dumped_file = dirpath
+        .join("_2233A_used in a function that decompiles_")
+        .join("small@22300.c");
+    assert!(
+        dumped_file.is_file(),
+        "expected output file missing: {}",
+        dumped_file.display()
+    );
+    eprintln!("Ok.");
+}
+
+/// Checks that `run` succeeds with an existing but empty output directory, and
+/// returns the number of string uses that were dumped (unlike the skipped and
+/// unknown ones, of which `DOX_SIG_PARSER` has different numbers).
+fn check_empty_output_dir_succeeds(n_uses: usize) {
+    eprint!("[*] Checking `run` succeeds when output directory is empty... ");
+    assert_eq!(n_uses, N_USES, "wrong number of string uses returned");
     eprintln!("Ok.");
 }
 

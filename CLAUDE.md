@@ -100,9 +100,12 @@ All clippy lint groups (`all`, `pedantic`, `nursery`, `cargo`, `restriction`) ar
 
 The tests for reusing a function's output files (`DumpedFunction::copy_to`) moved to haruspex together with the method.
 
-**Integration tests** (`tests/main.rs`): custom harness (`harness = false`) whose `main()` first calls `idalib::force_batch_mode()`, like the binary, then calls one `test_*()` function per scenario, which runs augur and then calls one `check_*()` function per assertion; each check prints its own `[*] Checking ...` progress line. `reset_output()` removes any stale IDB files (every extension in `IDB_EXTENSIONS`, shared with `check_no_idb_file()`) and output directory before each run, and again at the end of the scenarios that produce output, and the expected counts are module-level constants. Expected errors are matched against the full error chain (`format!("{err:#}")`), i.e., what users see. These conventions match rhabdomancer's harness. `test_binary_with_string_uses()` runs against `tests/data/dox_sig_parser` and asserts:
+**Integration tests** (`tests/main.rs`): custom harness (`harness = false`) whose `main()` first calls `idalib::force_batch_mode()`, like the binary, then calls one `test_*()` function per scenario, which runs augur and then calls one `check_*()` function per assertion; each check prints its own `[*] Checking ...` progress line. `reset_output()` removes any stale IDB files (every extension in `IDB_EXTENSIONS`, shared with `check_no_idb_file()`) and output directory before each run, and again at the end of the scenarios that produce output, and the expected counts are module-level constants. Expected errors are matched against the full error chain (`format!("{err:#}")`), i.e., what users see. These conventions match rhabdomancer's harness. `test_binary_with_string_uses()` runs the real binary through `run_binary()` against `tests/data/dox_sig_parser`, pinning the CLI output with literals in the same analysis, and asserts:
 
-- Exactly 18 decompiled string uses (only 5 without the `recover_strings()` pre-pass)
+- The binary exits successfully
+- stdout has exactly 39 blank lines and 39 string header lines (one per string, `N_STRINGS`), 18 string use lines (`N_USES`, only 5 without the `recover_strings()` pre-pass), 28 `[unknown]` lines (`N_UNKNOWN`), and nothing else
+- stdout contains the literal use line ``0x400C98 in sub_400C80 -> `./tests/data/dox_sig_parser.str/_401FF8__db_etc_ip-reputation_DoH_SERVER_LIST_/sub_400C80@400C80.c` + `sub_400C80@400C80.h` `` and the literal `0x400088 in [unknown]`
+- stderr contains the literal summary ``[+] Found 18 string uses in functions (0 skipped, 28 unknown), decompiled into `./tests/data/dox_sig_parser.str` ``
 - Exactly 10 output subdirectories
 - A specific total file count in the output tree (subdirectories + `.c` files + `.h` files + the root; several uses in the same function share one `.c` file)
 - `_4020A8_Parsing type error at line %d__/` exists and is non-empty (regression test for `recover_strings()`: this string's uses are only found after decompiling all functions upfront)
@@ -113,7 +116,13 @@ The tests for reusing a function's output files (`DumpedFunction::copy_to`) move
 - `sub_400C80@400C80.c` and `.h`, which reference several strings, appear in exactly 8 string subdirectories with byte-identical content (end-to-end regression test for reusing output files instead of decompiling again)
 - No IDB file (`.i64`, or unpacked `.id0`/`.id1`/`.id2`/`.nam`/`.til`) is left next to the binary
 
-The summary's skipped count is only checked at zero: neither `dox_sig_parser` nor haruspex's `ls` has a string use in a function that fails to decompile (the functions that can't be decompiled are imports, which reference no strings), so the non-zero case has no fixture yet.
+`test_binary_with_skipped_uses()` runs the real binary against `tests/data/too_big`, an x86-64 ELF object file built from `tests/data/too_big.c` (`clang -target x86_64-linux-gnu -O0 -c -o too_big too_big.c`): its `too_big` function is about twice Hex-Rays' `MAX_FUNCSIZE` limit (64 KB, in `hexrays.cfg`), made of macro-expanded stores to a `volatile` local (which need no relocation, keeping the fixture small), so it can't be decompiled, while `small` can; each references its own string. Neither `dox_sig_parser` nor haruspex's `ls` has a string use in a function that fails to decompile (their undecompilable functions are imports, which reference no strings), which is why this fixture exists. It asserts:
+
+- The binary exits successfully
+- stdout contains the literal `0x8 in too_big -> [decompilation failed]`
+- stderr contains the literal summary ``[+] Found 1 string uses in functions (1 skipped, 0 unknown), decompiled into `./tests/data/too_big.str` ``
+- No subdirectory is created for the string used only by `too_big` (`haruspex::decompile_to_file` creates directories only after a successful decompilation), while `small@22300.c` is written for the other string
+- No IDB file is left next to the binary
 
 `test_binary_without_string_uses()` then runs against `tests/data/no_strings`, a minimal macOS arm64 Mach-O binary built from `tests/data/no_strings.c` (`cc -O0 -o no_strings no_strings.c`), and asserts:
 
@@ -121,10 +130,11 @@ The summary's skipped count is only checked at zero: neither `dox_sig_parser` no
 - The output directory `no_strings.str/` does not exist afterwards (regression test for the single cleanup point in `run()`)
 - No IDB file is left next to the binary
 
-`test_existing_output_dir()` creates a non-empty `no_strings.str/` before running against `tests/data/no_strings`, and asserts:
+`test_existing_output_dir()` creates a non-empty `dox_sig_parser.str/` before running against `tests/data/dox_sig_parser`, then empties it and runs again (the same shape as haruspex's scenario), and asserts:
 
 - `run()` returns the "already exists" error from `prepare_output_dir()`
 - The existing file is still there and unchanged (regression test that the cleanup point never deletes pre-existing user data, which relies on `prepare_output_dir()` staying before `extract_string_uses()`)
+- With the directory empty, `run()` succeeds and returns 18, the number of dumped uses; this is the only check of `run()`'s return value on success, and `dox_sig_parser`'s dumped, skipped, and unknown counts all differ (18, 0, 28), so returning the wrong one would be caught
 - No IDB file is left next to the binary
 
 `test_missing_binary()` runs against the nonexistent `tests/data/missing`, and asserts:
