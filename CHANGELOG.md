@@ -9,28 +9,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add an integration test for invalid command-line arguments, like rhabdomancer.
-- Add the `too_big` test binary, with a function too big to decompile, and an integration test for skipped string uses.
 - Add the `no_decompiler` test binary and an integration test for binaries without a decompiler.
+- Add the `too_big` test binary, with a function too big to decompile, and an integration test for skipped string uses.
 - Pin the CLI output in integration tests by running the binary, and check `run`'s return value with an empty output
   directory, like haruspex.
+- Add an integration test for invalid command-line arguments, like rhabdomancer.
 
 ### Changed
 
-- Use lowercase error messages, consistently with the errors of the underlying libraries.
-- Force IDA batch mode in the integration test harness too.
-- Check for leftover IDB files in every integration test scenario that analyzes a binary, and remove all of them before and after each run.
-- Match expected errors against the full error chain in integration tests, like rhabdomancer.
-- Refactor `traverse_xrefs` and `dump_function_pseudocode` into methods of a `FunctionDumper` context struct.
-- Return a concrete error type from `extract_string_uses`, converting to `anyhow` only in `run`.
 - Update haruspex to 1.0, replacing augur's own decompilation, license checks, and output file reuse with haruspex's
   `decompile`, `decompile_to_file`, and `DumpedFunction::copy_to`.
-- Document how the output directory is named after the input file.
+- Refactor `traverse_xrefs` and `dump_function_pseudocode` into methods of a `FunctionDumper` context struct.
+- Return a concrete error type from `extract_string_uses`, converting to `anyhow` only in `run`.
 - Report string uses in functions that can't be decompiled and references outside functions in the final summary.
 - Escape non-printable chars in the function names that augur prints, since names come from the analyzed binary.
+- Force IDA batch mode in the integration test harness too.
+- Check for leftover IDB files in every integration test scenario that analyzes a binary, and remove all of them before
+  and after each run.
+- Match expected errors against the full error chain in integration tests, like rhabdomancer.
+- Use lowercase error messages, consistently with the errors of the underlying libraries.
 - Exclude `CLAUDE.md` from the published package.
 - Improve code organization and style.
 - Update documentation.
+- Update dependencies.
 
 ## [0.10.3] - 2026-09-25
 
