@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Document how the output directory is named after the input file.
 - Report string uses in functions that can't be decompiled and references outside functions in the final summary.
 - Escape non-printable chars in the function names that augur prints, since names come from the analyzed binary.
+- Exclude `CLAUDE.md` from the published package.
 - Improve code organization and style.
 - Update documentation.
 
