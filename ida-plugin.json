@@ -3,7 +3,7 @@
   "plugin": {
     "name": "augur",
     "entryPoint": "ida-plugin-stub.py",
-    "version": "1.1.0-alpha",
+    "version": "1.1.0",
     "idaVersions": ["9.5"],
     "description": "Reverse engineering assistant that extracts strings and related pseudocode from a binary file.",
     "license": "MIT",
