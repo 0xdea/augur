@@ -77,8 +77,8 @@ impl<'a> FunctionDumper<'a> {
     ///
     /// # Errors
     ///
-    /// Returns [`HaruspexError`] if the output files cannot be created, or if the
-    /// Hex-Rays decompiler license is not available for the target binary.
+    /// Returns [`HaruspexError`] if no function can be decompiled, or if the
+    /// output files cannot be created.
     fn dump_all(&mut self, dirpath: &Path) -> Result<StringUses, HaruspexError> {
         let mut uses = StringUses::default();
 
@@ -104,9 +104,8 @@ impl<'a> FunctionDumper<'a> {
     ///
     /// # Errors
     ///
-    /// Returns the appropriate [`HaruspexError`] if the output files cannot be
-    /// created, or if the Hex-Rays decompiler license is not available for the
-    /// target binary.
+    /// Returns the appropriate [`HaruspexError`] if no function can be
+    /// decompiled, or if the output files cannot be created.
     fn traverse_xrefs(
         &mut self,
         addr: Address,
@@ -157,8 +156,8 @@ impl<'a> FunctionDumper<'a> {
     ///
     /// # Errors
     ///
-    /// Returns [`HaruspexError`] if the output files cannot be created, or if the
-    /// Hex-Rays decompiler license is not available for the target binary.
+    /// Returns [`HaruspexError`] if no function can be decompiled, or if the
+    /// output files cannot be created.
     fn dump_function_pseudocode(
         &mut self,
         func: &Function<'_>,
@@ -241,8 +240,8 @@ pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
     eprintln!("[-] File type: {:?}", idb.meta().filetype());
     eprintln!();
 
-    // Disable argument name hints, which also checks that a decompiler is
-    // available.
+    // Disable argument name hints, which also checks that a decompiler, and a
+    // license for it, is available.
     ArgHintsMode::Disabled.apply(&mut idb)?;
 
     // Create a new output directory, returning an error if it already exists and
@@ -298,8 +297,8 @@ pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
 ///
 /// # Errors
 ///
-/// Returns [`HaruspexError`] if the output files cannot be created, or if the
-/// Hex-Rays decompiler license is not available for the target binary.
+/// Returns [`HaruspexError`] if no function can be decompiled, or if the output
+/// files cannot be created.
 fn extract_string_uses(idb: &mut IDB, dirpath: &Path) -> Result<StringUses, HaruspexError> {
     // Leverage the full power of IDA to recover strings during decompilation.
     eprintln!();
@@ -316,8 +315,7 @@ fn extract_string_uses(idb: &mut IDB, dirpath: &Path) -> Result<StringUses, Haru
 ///
 /// # Errors
 ///
-/// Returns [`HaruspexError`] if no function can be decompiled, e.g., because
-/// the Hex-Rays decompiler license is not available for the target binary.
+/// Returns [`HaruspexError`] if no function can be decompiled.
 fn recover_strings(idb: &mut IDB) -> Result<(), HaruspexError> {
     for (_id, func) in idb.functions() {
         if func.flags().contains(FunctionFlags::THUNK) {
