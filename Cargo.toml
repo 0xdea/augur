@@ -24,8 +24,7 @@ exclude = [
 
 [dependencies]
 idalib = "0.11"
-# temporary: switch to "1.1.0" once haruspex 1.1.0 is published to crates.io
-haruspex = { path = "../haruspex" }
+haruspex = "1.1.0"
 anyhow = "1.0"
 
 [build-dependencies]
