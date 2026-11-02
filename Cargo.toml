@@ -1,6 +1,6 @@
 [package]
 name = "augur"
-version = "1.0.1-alpha"
+version = "1.1.0-alpha"
 authors = ["Marco Ivaldi <raptor@0xdeadbeef.info>"]
 edition = "2024"
 description = "Reverse engineering assistant that extracts strings and related pseudocode from a binary file."
@@ -23,12 +23,13 @@ exclude = [
 ]
 
 [dependencies]
-idalib = "0.10"
-haruspex = "1.0.0"
+idalib = "0.11"
+# temporary: switch to "1.1.0" once haruspex 1.1.0 is published to crates.io
+haruspex = { path = "../haruspex" }
 anyhow = "1.0"
 
 [build-dependencies]
-idalib-build = "0.10"
+idalib-build = "0.11"
 
 [dev-dependencies]
 walkdir = "2.5"
