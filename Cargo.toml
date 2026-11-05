@@ -24,9 +24,7 @@ exclude = [
 
 [dependencies]
 idalib = "0.11"
-# Temporary: haruspex 1.2.0 (`NameMode`) isn't on crates.io yet, and its
-# `1.2.0-alpha` doesn't satisfy `^1.1.0`, so a `[patch]` can't replace it.
-haruspex = { path = "../haruspex" }
+haruspex = "1.2.0-alpha"
 anyhow = "1.0"
 
 [build-dependencies]
@@ -36,6 +34,7 @@ idalib-build = "0.11"
 walkdir = "2.5"
 
 [patch.crates-io]
+haruspex = { git = "https://github.com/0xdea/haruspex", branch = "master" }
 idalib = { git = "https://github.com/0xdea/idalib", branch = "feat/process-config-directive" }
 idalib-build = { git = "https://github.com/0xdea/idalib", branch = "feat/process-config-directive" }
 idalib-sys = { git = "https://github.com/0xdea/idalib", branch = "feat/process-config-directive" }

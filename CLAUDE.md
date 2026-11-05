@@ -11,6 +11,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - IDA 9.5+ (see the README's compatibility table) with the Hex-Rays decompiler and a valid license, with `IDADIR` set to the installation directory at both build time and runtime. The build script (`build.rs`, via `idalib-build`) checks common installation paths if it's unset, and only warns if it can't find IDA, so set it explicitly for non-standard locations (`export IDADIR=/path/to/ida`).
 - LLVM/Clang, used by bindgen when building `idalib`. On Windows, `LIBCLANG_PATH` must also be set to the LLVM/Clang `bin` directory.
 - Rust edition 2024.
+- Temporarily, haruspex and idalib come from git through `[patch.crates-io]`: haruspex from its `master` branch, since haruspex 1.2.0 (`NameMode`) isn't on crates.io yet (the requirement is the pre-release `1.2.0-alpha`, which the patched version satisfies, while `^1.1.0` wouldn't accept it), and idalib from the `feat/process-config-directive` branch of `0xdea/idalib` (all three crates, since `idalib-sys` declares `links = "idalib"`), for `IDB::modify_ida_config`, which haruspex's `NameMode` uses. Git sources, unlike a path to a sibling clone, also work in CI. `cargo semver-checks` fails meanwhile, since it builds the crate without the patch. Before publishing, require `haruspex = "1.2.0"`, comment the patch out again (crates.io rejects git dependencies), and run `cargo semver-checks`.
 
 ## Commands
 
@@ -71,7 +72,7 @@ This is a **single-crate project** — no workspace, just `src/main.rs` (CLI ent
 ### External dependencies
 
 - **idalib** (0.11): Rust bindings for IDA's idalib (headless SDK).
-- **haruspex** (1.1): Decompiler helper; provides `decompile`, `decompile_to_file`, `DumpedFunction` (and its `copy_to`), `function_name`, `output_path_for_function`, `sanitize_filename`, `prepare_output_dir`, `ArgHintsMode`, and `HaruspexError`.
+- **haruspex** (1.2, temporarily from git, see Build requirements): Decompiler helper; provides `decompile`, `decompile_to_file`, `DumpedFunction` (and its `copy_to`), `function_name`, `output_path_for_function`, `sanitize_filename`, `prepare_output_dir`, `ArgHintsMode`, `NameMode`, and `HaruspexError`.
 - **anyhow** (1.0): Error handling.
 - **idalib-build** (0.11): Build-time linkage configuration (used in `build.rs`).
 

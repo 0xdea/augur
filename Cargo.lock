@@ -396,6 +396,7 @@ checksum = "e4eba85ea1d0a966a983acd07deee566e67395d2d96b6fb39e62b5a833f1eb0b"
 [[package]]
 name = "haruspex"
 version = "1.2.0-alpha"
+source = "git+https://github.com/0xdea/haruspex?branch=master#f85d5d26f6b200b2c3ebe1849a22b985adec5b7c"
 dependencies = [
  "anyhow",
  "idalib",
