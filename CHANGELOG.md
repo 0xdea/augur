@@ -7,9 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Add the `garble_names` test binary and an integration test for names that aren't valid C identifiers.
+
 ### Changed
 
 - Mark the `linker_messages` suppression as permanent.
+
+### Fixed
+
+- Garble symbol names that aren't valid C identifiers in pseudocode (e.g., `#memcpy` in ARM64EC binaries becomes
+  `_memcpy`), which IDA 9.5 wraps in backticks by default, making pseudocode unparsable by static analysis tools.
+  Demangled Rust names are still wrapped in backticks.
 
 ## [1.1.0] - 2026-11-02
 

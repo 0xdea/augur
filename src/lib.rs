@@ -11,8 +11,8 @@ use std::{fs, iter};
 
 use anyhow::Context as _;
 use haruspex::{
-    ArgHintsMode, DumpedFunction, HaruspexError, decompile, decompile_to_file, function_name,
-    output_path_for_function, prepare_output_dir, sanitize_filename,
+    ArgHintsMode, DumpedFunction, HaruspexError, NameMode, decompile, decompile_to_file,
+    function_name, output_path_for_function, prepare_output_dir, sanitize_filename,
 };
 use idalib::Address;
 use idalib::func::{Function, FunctionFlags};
@@ -243,6 +243,9 @@ pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
     // Disable argument name hints, which also checks that a decompiler, and a
     // license for it, is available.
     ArgHintsMode::Disabled.apply(&mut idb)?;
+
+    // Garble displayed names, so that pseudocode stays valid C.
+    NameMode::Garbled.apply(&mut idb)?;
 
     // Create a new output directory, returning an error if it already exists and
     // it's not empty.

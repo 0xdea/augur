@@ -19,6 +19,9 @@ const NO_STRINGS: &str = "./tests/data/no_strings";
 const NO_DECOMPILER: &str = "./tests/data/no_decompiler";
 /// Target binary with a string used only in a function too big to decompile.
 const TOO_BIG: &str = "./tests/data/too_big";
+/// Target binary whose `main` uses a string and calls functions whose names
+/// aren't valid C identifiers.
+const GARBLE_NAMES: &str = "./tests/data/garble_names";
 /// Target binary that doesn't exist.
 const MISSING: &str = "./tests/data/missing";
 
@@ -54,6 +57,7 @@ fn main() -> anyhow::Result<()> {
 
     test_binary_with_string_uses()?;
     test_binary_with_skipped_uses()?;
+    test_garbled_names()?;
     test_binary_without_string_uses()?;
     test_binary_without_decompiler()?;
     test_existing_output_dir()?;
@@ -116,6 +120,32 @@ fn test_binary_with_skipped_uses() -> anyhow::Result<()> {
 
     // Remove the output directory and any IDB files at the end.
     reset_output(TOO_BIG)?;
+    eprintln!();
+    Ok(())
+}
+
+/// Runs the augur binary against a binary whose `main` uses a string and calls
+/// functions whose names aren't valid C identifiers, and checks that they are
+/// garbled in its pseudocode.
+fn test_garbled_names() -> anyhow::Result<()> {
+    let dirpath = reset_output(GARBLE_NAMES)?;
+
+    let output = run_binary(&[GARBLE_NAMES])?;
+    eprintln!();
+    check_binary_succeeded(&output);
+    check_stdout_line(
+        &output,
+        "0x1000004B6 in _main -> `./tests/data/garble_names.str/_1000004FA_garbled names_/_main@1000004A0.c`",
+    );
+    check_summary(
+        &output,
+        "[+] Found 1 string uses in functions (0 skipped, 3 unknown), decompiled into `./tests/data/garble_names.str`",
+    );
+    check_garbled_names(&dirpath)?;
+    check_no_idb_file(GARBLE_NAMES);
+
+    // Remove the output directory and any IDB files at the end.
+    reset_output(GARBLE_NAMES)?;
     eprintln!();
     Ok(())
 }
@@ -376,6 +406,35 @@ fn check_arg_hints_disabled(dirpath: &Path) -> anyhow::Result<()> {
         sub_content.contains(r#"printf("%s(): Num can't be NULL.\n", "_atoi");"#),
         "output file `{}` contains argument name hints, expected them to be disabled",
         sub_file.display()
+    );
+    eprintln!("Ok.");
+    Ok(())
+}
+
+/// Checks that `run` garbles names that aren't valid C identifiers in the
+/// pseudocode of `_main` in the output directory of `GARBLE_NAMES`, instead of
+/// wrapping them in backticks.
+///
+/// The decompiler drops the leading underscore of Mach-O symbols, so
+/// `_has#hash` is displayed as `has_hash`. Each call follows `= ` or `return `,
+/// so the leading space rules out a prefixed name (e.g., `_has_hash(`).
+fn check_garbled_names(dirpath: &Path) -> anyhow::Result<()> {
+    eprint!("[*] Checking names are garbled in pseudocode by default... ");
+    let main_file = dirpath
+        .join("_1000004FA_garbled names_")
+        .join("_main@1000004A0.c");
+    let pseudocode = fs::read_to_string(&main_file)?;
+    for call in [" has_hash(", " has_space(", " has_star_("] {
+        assert!(
+            pseudocode.contains(call),
+            "output file `{}` doesn't contain `{call}`:\n{pseudocode}",
+            main_file.display()
+        );
+    }
+    assert!(
+        !pseudocode.contains('`'),
+        "output file `{}` contains backticks:\n{pseudocode}",
+        main_file.display()
     );
     eprintln!("Ok.");
     Ok(())
