@@ -132,6 +132,8 @@ This project's development has been supported by the following organizations:
 
 - Integrate with [oneiromancer](https://github.com/0xdea/oneiromancer).
 - Allow users to choose to process string cross-references even if the decompiler is unavailable.
+- Allow choosing which architecture to analyze in universal (fat) Mach-O binaries, since IDA picks one in batch mode
+  (e.g., IDA 9.5 picks arm64e where IDA 9.4 picked x86_64).
 - Implement serialized output to facilitate automated parsing and analysis.
 - Consider integrating [proptest](https://proptest-rs.github.io/proptest/intro.html) to complement unit testing.
 - Implement functionality similar to <https://github.com/joxeankoret/idamagicstrings>.
