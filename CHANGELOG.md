@@ -21,9 +21,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Garble symbol names that aren't valid C identifiers in pseudocode (e.g., `#memcpy` in ARM64EC binaries becomes
-  `_memcpy`), which IDA 9.5 wraps in backticks by default, making pseudocode unparsable by static analysis tools.
-  Demangled Rust names are still wrapped in backticks.
+- Garble names that IDA 9.5 wraps in backticks in the pseudocode (e.g., `#memcpy` becomes `_memcpy`, as on IDA 9.4),
+  so static analysis tools can parse it again. Some demangled Rust names (e.g., trait implementations such as
+  `<char as core::fmt::Display>::fmt`) and types (e.g., `&str`) still keep their backticks.
 
 ## [1.1.0] - 2026-11-02
 
