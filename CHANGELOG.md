@@ -13,12 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Mark the `linker_messages` suppression as permanent.
 - Update idalib to v0.11.1, for `IDB::modify_ida_config`.
 - Update haruspex to v1.2.0, for `NameMode` and `sanitize_filename`'s allowlist.
 - Name string subdirectories with haruspex's `sanitize_filename` alone, the same as function files: letters of any script
   are kept (e.g., `café` was `caf`), and control characters (e.g., newlines) are replaced with underscores instead of
   being removed, so the names of some subdirectories change.
+- Mark the `linker_messages` suppression as permanent.
 - Update other dependencies.
 - Update documentation.
 
