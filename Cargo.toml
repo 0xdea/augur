@@ -23,21 +23,18 @@ exclude = [
 ]
 
 [dependencies]
-idalib = "0.11"
+idalib = "0.11.1"
 haruspex = "1.2.0-alpha"
 anyhow = "1.0"
 
 [build-dependencies]
-idalib-build = "0.11"
+idalib-build = "0.11.1"
 
 [dev-dependencies]
 walkdir = "2.5"
 
 [patch.crates-io]
 haruspex = { git = "https://github.com/0xdea/haruspex", branch = "master" }
-idalib = { git = "https://github.com/0xdea/idalib", branch = "feat/process-config-directive" }
-idalib-build = { git = "https://github.com/0xdea/idalib", branch = "feat/process-config-directive" }
-idalib-sys = { git = "https://github.com/0xdea/idalib", branch = "feat/process-config-directive" }
 
 [[test]]
 name = "tests"
