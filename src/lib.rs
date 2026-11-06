@@ -346,26 +346,22 @@ fn recover_strings(idb: &mut IDB) -> Result<(), HaruspexError> {
 /// Returns the name of the output subdirectory for `string` at `addr`, i.e.,
 /// `_{addr:X}_{sanitized_string}_`.
 ///
-/// Only the printable chars in `string` are kept, reserved chars (including
-/// path separators) are replaced, and the result is truncated by haruspex's
-/// [`sanitize_filename`], so that the name is always a single path component
-/// inside the output directory.
+/// `string` is sanitized and truncated by haruspex's [`sanitize_filename`],
+/// the same as function names, so that the name is always a single path
+/// component inside the output directory: letters and digits of any script,
+/// printable ASCII chars except reserved ones (`.` and `/`, and on Windows
+/// also `<>:"\|?*`), and spaces are kept, while everything else, including
+/// control chars and combining marks that aren't letters (e.g., U+0301 in
+/// decomposed text, or the Devanagari virama), is replaced with underscores.
+/// Trailing NULs, i.e., the terminator of C strings, which IDA
+/// includes, are removed first, so that they don't add underscores to every
+/// name. The address keeps the names of different strings distinct.
 #[must_use]
 fn string_dirname(addr: Address, string: &str) -> String {
     format!(
         "_{addr:X}_{}_",
-        sanitize_filename(&filter_printable_chars(string))
+        sanitize_filename(string.trim_end_matches('\0'))
     )
-}
-
-/// Returns only the printable chars in `string`, i.e., ASCII graphic chars and
-/// spaces.
-#[must_use]
-fn filter_printable_chars(string: &str) -> String {
-    string
-        .chars()
-        .filter(|ch| ch.is_ascii_graphic() || *ch == ' ')
-        .collect()
 }
 
 #[cfg(test)]
@@ -384,11 +380,11 @@ mod tests {
     }
 
     #[test]
-    fn string_dirname_strips_non_printable_chars() {
+    fn string_dirname_replaces_control_chars() {
         assert_eq!(
-            string_dirname(0x1000, "line\n\tbreak\x00"),
-            "_1000_linebreak_",
-            "non-printable chars should be stripped"
+            string_dirname(0x1000, "line\n\tbreak\x00in\x00"),
+            "_1000_line__break_in_",
+            "control chars should be replaced with underscores, except trailing NULs"
         );
     }
 
@@ -405,42 +401,6 @@ mod tests {
                 [Component::Normal(_)]
             ),
             "name should be a single normal path component: {name}"
-        );
-    }
-
-    #[test]
-    fn filter_printable_chars_keeps_ascii_graphic_chars() {
-        assert_eq!(
-            filter_printable_chars("hello!@#$%^&*()"),
-            "hello!@#$%^&*()",
-            "ascii graphic chars should be kept"
-        );
-    }
-
-    #[test]
-    fn filter_printable_chars_keeps_space() {
-        assert_eq!(
-            filter_printable_chars("hello world"),
-            "hello world",
-            "space should be kept"
-        );
-    }
-
-    #[test]
-    fn filter_printable_chars_strips_control_chars() {
-        assert_eq!(
-            filter_printable_chars("hel\x00lo\x01\x1f"),
-            "hello",
-            "control chars should be stripped"
-        );
-    }
-
-    #[test]
-    fn filter_printable_chars_strips_non_ascii() {
-        assert_eq!(
-            filter_printable_chars("caf\u{00e9}"),
-            "caf",
-            "non-ascii chars should be stripped"
         );
     }
 }

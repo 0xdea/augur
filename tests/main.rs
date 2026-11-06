@@ -387,7 +387,7 @@ fn check_number_of_files(dirpath: &Path) {
 /// are present.
 fn check_recovered_string_uses(dirpath: &Path) -> anyhow::Result<()> {
     eprint!("[*] Checking string uses recovered via the decompiler are present... ");
-    let recovered_dir = dirpath.join("_4020A8_Parsing type error at line %d__");
+    let recovered_dir = dirpath.join("_4020A8_Parsing type error at line %d___");
     assert!(
         recovered_dir.is_dir() && recovered_dir.read_dir()?.next().is_some(),
         "decompiler-recovered string use missing: {}",
