@@ -5,7 +5,7 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.2.0] - 2026-11-06
 
 ### Added
 
@@ -15,9 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Mark the `linker_messages` suppression as permanent.
 - Update idalib to v0.11.1, for `IDB::modify_ida_config`.
+- Update haruspex to v1.2.0, for `NameMode` and `sanitize_filename`'s allowlist.
 - Name string subdirectories with haruspex's `sanitize_filename` alone, the same as function files: letters of any script
   are kept (e.g., `café` was `caf`), and control characters (e.g., newlines) are replaced with underscores instead of
   being removed, so the names of some subdirectories change.
+- Update other dependencies.
+- Update documentation.
 
 ### Fixed
 
@@ -448,7 +451,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - First release to be published to [crates.io](https://crates.io/).
 
-[unreleased]: https://github.com/0xdea/augur/compare/v1.1.0...HEAD
+[unreleased]: https://github.com/0xdea/augur/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/0xdea/augur/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/0xdea/augur/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/0xdea/augur/compare/v0.10.3...v1.0.0
 [0.10.3]: https://github.com/0xdea/augur/compare/v0.10.2...v0.10.3

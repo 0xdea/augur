@@ -1,6 +1,6 @@
 [package]
 name = "augur"
-version = "1.2.0-alpha"
+version = "1.2.0"
 authors = ["Marco Ivaldi <raptor@0xdeadbeef.info>"]
 edition = "2024"
 description = "Reverse engineering assistant that extracts strings and related pseudocode from a binary file."
@@ -24,7 +24,7 @@ exclude = [
 
 [dependencies]
 idalib = "0.11.1"
-haruspex = "1.2.0-alpha"
+haruspex = "1.2.0"
 anyhow = "1.0"
 
 [build-dependencies]
@@ -33,8 +33,8 @@ idalib-build = "0.11.1"
 [dev-dependencies]
 walkdir = "2.5"
 
-[patch.crates-io]
-haruspex = { git = "https://github.com/0xdea/haruspex", branch = "master" }
+# [patch.crates-io]
+# haruspex = { git = "https://github.com/0xdea/haruspex", branch = "master" }
 
 [[test]]
 name = "tests"

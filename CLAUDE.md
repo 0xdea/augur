@@ -12,7 +12,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - LLVM/Clang, used by bindgen when building `idalib`. On Windows, `LIBCLANG_PATH` must also be set to the LLVM/Clang `bin` directory.
 - Rust edition 2024.
 - idalib 0.11.1+ (`idalib = "0.11.1"` and `idalib-build = "0.11.1"`), the first release with `IDB::modify_ida_config`, which haruspex's `NameMode` uses.
-- Temporarily, haruspex comes from its `master` branch on GitHub through `[patch.crates-io]`, since haruspex 1.2.0 (`NameMode`, and `sanitize_filename`'s allowlist) isn't on crates.io yet (the requirement is the pre-release `1.2.0-alpha`, which the patched version satisfies, while `^1.1.0` wouldn't accept it). A git source, unlike a path to a sibling clone, also works in CI. After pushing haruspex, `cargo update -p haruspex` moves the lockfile to its latest commit. `cargo semver-checks` fails meanwhile, since it builds the crate without the patch. Before publishing, require `haruspex = "1.2.0"`, comment the patch out again (crates.io rejects git dependencies), and run `cargo semver-checks`.
 
 ## Commands
 
@@ -70,8 +69,8 @@ This is a **single-crate project** — no workspace, just `src/main.rs` (CLI ent
 
 ### External dependencies
 
-- **idalib** (0.11): Rust bindings for IDA's idalib (headless SDK).
-- **haruspex** (1.2, temporarily from git, see Build requirements): Decompiler helper; provides `decompile`, `decompile_to_file`, `DumpedFunction` (and its `copy_to`), `function_name`, `output_path_for_function`, `sanitize_filename`, `prepare_output_dir`, `ArgHintsMode`, `NameMode`, and `HaruspexError`.
+- **idalib** (0.11.1): Rust bindings for IDA's idalib (headless SDK).
+- **haruspex** (1.2): Decompiler helper; provides `decompile`, `decompile_to_file`, `DumpedFunction` (and its `copy_to`), `function_name`, `output_path_for_function`, `sanitize_filename`, `prepare_output_dir`, `ArgHintsMode`, `NameMode`, and `HaruspexError`.
 - **anyhow** (1.0): Error handling.
 - **idalib-build** (0.11): Build-time linkage configuration (used in `build.rs`).
 
