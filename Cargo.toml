@@ -15,7 +15,6 @@ exclude = [
     ".github/*",
     ".img/*",
     ".gitignore",
-    ".taplo.toml",
     "CLAUDE.md",
     "tests/*",
     "ida-plugin.json",
