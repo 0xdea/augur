@@ -29,6 +29,7 @@ It stores pseudocode of functions that reference strings in an organized directo
 
 ## Articles
 
+- <https://hex-rays.com/blog/divining-vulnerabilities-contributor-program>
 - <https://hex-rays.com/blog/streamlining-vulnerability-research-idalib-rust-bindings>
 - <https://hnsecurity.it/blog/streamlining-vulnerability-research-with-ida-pro-and-rust>
 
