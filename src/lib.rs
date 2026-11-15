@@ -5,6 +5,7 @@
 
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
+use std::mem::DropGuard;
 use std::path::Path;
 use std::time::Instant;
 use std::{fs, iter};
@@ -256,23 +257,20 @@ pub fn run(filepath: impl AsRef<Path>) -> anyhow::Result<usize> {
 
     // Remove the output directory, which is empty or only partially populated, if
     // anything goes wrong, including when no string uses were found.
-    let uses = extract_string_uses(&mut idb, &dirpath)
-        .map_err(anyhow::Error::from)
-        .and_then(|uses| {
-            anyhow::ensure!(
-                uses.dumped > 0,
-                "no string uses were found, check your input file"
+    let cleanup = DropGuard::new(&dirpath, |dirpath| {
+        if let Err(cleanup_err) = fs::remove_dir_all(dirpath) {
+            eprintln!(
+                "[!] Failed to remove directory `{}`: {cleanup_err}",
+                dirpath.display()
             );
-            Ok(uses)
-        })
-        .inspect_err(|_| {
-            if let Err(cleanup_err) = fs::remove_dir_all(&dirpath) {
-                eprintln!(
-                    "[!] Failed to remove directory `{}`: {cleanup_err}",
-                    dirpath.display()
-                );
-            }
-        })?;
+        }
+    });
+    let uses = extract_string_uses(&mut idb, &dirpath)?;
+    anyhow::ensure!(
+        uses.dumped > 0,
+        "no string uses were found, check your input file"
+    );
+    DropGuard::dismiss(cleanup);
 
     eprintln!();
     eprintln!(

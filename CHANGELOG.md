@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Declare the minimum supported Rust version (1.100) in `Cargo.toml`.
+
 ### Changed
 
 - Update documentation.
