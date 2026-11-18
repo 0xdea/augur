@@ -6,7 +6,7 @@
 [![](https://img.shields.io/badge/ida-9.5-purple)](https://hex-rays.com/ida-pro)
 [![](https://img.shields.io/badge/mastodon-%40raptor-blue.svg)](https://infosec.exchange/@raptor)
 [![build](https://github.com/0xdea/augur/actions/workflows/build.yml/badge.svg)](https://github.com/0xdea/augur/actions/workflows/build.yml)
-[![doc](https://github.com/0xdea/augur/actions/workflows/doc.yml/badge.svg)](https://github.com/0xdea/augur/actions/workflows/doc.yml)
+[![doc](https://img.shields.io/docsrs/augur)](https://docs.rs/augur)
 
 > "In fact, I've actually triggered buffer overflows by just entering my real name."
 >
