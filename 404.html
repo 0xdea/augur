@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Redirecting to docs.rs</title>
+<script>
+const prefix = "/augur/augur/";
+const path = location.pathname;
+location.replace(path.startsWith(prefix)
+  ? "https://docs.rs/augur/latest/augur/" + path.slice(prefix.length)
+  : "https://docs.rs/augur");
+</script>
+</head>
+<body>
+<p>The documentation has moved to <a href="https://docs.rs/augur">https://docs.rs/augur</a>.</p>
+</body>
+</html>
