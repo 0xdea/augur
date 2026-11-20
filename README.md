@@ -114,6 +114,8 @@ summarizes the latest compatible release for each IDA version:
 | v9.4.260915 | v1.0.0                    |
 | v9.5.261026 | current release           |
 
+Tested on Linux (x86_64 and ARM64), macOS (ARM64), and Windows (x86_64 and ARM64).
+
 > [!NOTE]
 > Check the [idalib-rs](https://github.com/idalib-rs/idalib) documentation for additional information.
 
